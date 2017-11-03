@@ -17,6 +17,8 @@ use strict;
 use List::Util qw (min max);
 
 
+my $min_cov = 100000000;
+my $max_cov = 0;
 my $g = Graph::Undirected->new;
 my $h = Graph::Directed->new;
 my $viz = Graph::Easy->new({'undirected','true'});
@@ -563,11 +565,21 @@ foreach my $e (@scc) #Cycle through all SCCs in the graph to find potential DMs
 
 			
 			print average("temp1.zeros.txt", $i)."\n";
+			if(average("temp1.zeros.txt", $i) >= $max_cov)
+                        {
+                                $max_cov = average("temp1.zeros.txt", $i);
+                        }
+                        if(average("temp1.zeros.txt", $i) <= $min_cov)
+                        {
+                                $min_cov = average("temp1.zeros.txt", $i);
+                        }
+
+
 
 		}
 			
 	
-	if(scalar(@$e) > $min_cyclic) #Enforce minimum length requirement
+	if(scalar(@$e) > $min_cyclic && ($max_cov - $min_cov) < 35) #Enforce minimum length requirement
 	{
 		print "SEGMENTS FOR PREDICTED DOUBLE MINUTE: @shortest_path\n*************************************\n";
 		#print REPORT "SEGMENTS FOR PREDICTED DOUBLE MINUTE: @shortest_path\n*************************************\n";
@@ -578,6 +590,9 @@ foreach my $e (@scc) #Cycle through all SCCs in the graph to find potential DMs
 		#print "size of SCC: ".scalar(@$e)."\n";
 		$dm_count++;
 	}
+
+	$min_cov = 100000000;
+        $max_cov = 0;
 
 	my $ssize = scalar(@shortest_path);
 
@@ -622,10 +637,19 @@ for(my $i = 0; $i < scalar(@shortest_path); $i++)
                         system("cat temp1.txt | awk 'BEGIN { prev_chr=\"\";prev_pos=0;} { if(\$1==prev_chr && prev_pos+1!=int(\$2)) {for(i=prev_pos+1;i<int(\$2);++i) {printf(\"%s\\t%d\\t0\\n\",\$1,i);}} print; prev_chr=\$1;prev_pos=int(\$2);}' > temp1.zeros.txt");
                         print average("temp1.zeros.txt", $i)."\n";
 
+			if(average("temp1.zeros.txt", $i) >= $max_cov)
+			{
+				$max_cov = average("temp1.zeros.txt", $i);
+			}
+			if(average("temp1.zeros.txt", $i) <= $min_cov)
+                        {
+                                $min_cov = average("temp1.zeros.txt", $i);
+                        }
+                        
 }
 
 
- if(scalar(@$e) > $min_non_cyclic) #Once again, this is to ensure we don't get a predicted dmin that has only one amplicon 
+ if(scalar(@$e) > $min_non_cyclic && ($max_cov - $min_cov) < 35) #Once again, this is to ensure we don't get a predicted dmin that has only one amplicon 
         {
                 print "SEGMENTS FOR PREDICTED INCOMPLETE DOUBLE MINUTE: @shortest_path\n*************************************\n";
 		#print REPORT "SEGMENTS FOR PREDICTED INCOMPLETE DOUBLE MINUTE: @shortest_path\n*************************************\n";
@@ -636,6 +660,8 @@ for(my $i = 0; $i < scalar(@shortest_path); $i++)
 			
         }
 
+	$min_cov = 100000000;
+	$max_cov = 0;
 }
 
 C:
@@ -644,4 +670,3 @@ cleanup();
 print "There are $dm_count predicted double minutes\n";
 #close REPORT;
 close SV;
-
