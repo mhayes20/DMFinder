@@ -4,13 +4,19 @@
 
 use warnings;
 use strict;
+use Scalar::Util qw(looks_like_number);
 
-if(scalar(@ARGV) != 1)
+
+if(scalar(@ARGV) != 1 and scalar(@ARGV) != 2)
 {
 	die("Usage is perl program.pl [RDX SUM FILT FILE] [SV LINK FILE] [WINDOW]\n");
 }
 
 my $file = $ARGV[0];
+my $chr_prefix = $ARGV[1];
+if ( ! defined ( $chr_prefix ) ) {
+    $chr_prefix = "";
+}
 my $sv_file = 0; # no longer used
 my $window = 0; # no longer used
 #my $sv_file = $ARGV[1];
@@ -88,7 +94,9 @@ for(my $i = 0; $i < scalar(@filerec)-1; $i++)
 	chomp($line2);
 	
 	@record2 = split(/\t/, $line2);	
-
+	if ( !looks_like_number($record[9]) || !looks_like_number($record2[8]) ) {
+		next;
+	}
 	if((abs($record[9] - $record2[8]) < 10000 && $chr eq $record2[7] ) )
 	{
 
@@ -104,6 +112,10 @@ for(my $i = 0; $i < scalar(@filerec)-1; $i++)
 			@record = split(/\t/, $line3);
 			@record2 = split(/\t/, $line4);			
 
+			if ( !looks_like_number($record[9]) || !looks_like_number($record2[8]) ) {
+				next;
+			}
+
 			#if((abs($record[9] - $record2[8]) < 10000 && abs($record[4] - $record2[4]) <= 3))
 			if((abs($record[9] - $record2[8]) < 10000 && $chr eq $record2[7]))
 			{
@@ -117,7 +129,7 @@ for(my $i = 0; $i < scalar(@filerec)-1; $i++)
 				$i = $j+1; #Set i to the place where the new end position was created. If we didn't do this, then the code would just 
 						#start over from the original position.
 
-				print "$chr\t$new_start\t$new_end\n";
+				print "$chr_prefix$chr\t$new_start\t$new_end\n";
 				goto A;
 			}
 
@@ -129,7 +141,7 @@ for(my $i = 0; $i < scalar(@filerec)-1; $i++)
 	else
 	{
 		
-		print "$chr\t".$record[8]."\t".$record[9]."\n";
+		print "$chr_prefix$chr\t".$record[8]."\t".$record[9]."\n";
 
 	}
 
