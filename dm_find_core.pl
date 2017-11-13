@@ -63,7 +63,7 @@ sub sampleFiles
 
 		if($count % $freq == 0)
 		{
-			print S1 "$line1";
+			#print S1 "$line1";
 		}
 
 
@@ -76,7 +76,7 @@ sub sampleFiles
 
                 if($count % $freq == 0)
                 {
-                        print S2 "$line2";
+                        #print S2 "$line2";
                 }
 
 		$count++;
@@ -128,7 +128,8 @@ sub average
 		}
 		$count++;
 	}
-	print "Sample size: $n\n";
+	
+#print "Sample size: $n\n";
 
 	#close F2;
 	close F1;
@@ -556,7 +557,7 @@ foreach my $e (@scc) #Cycle through all SCCs in the graph to find potential DMs
 			chomp($shortest_path[$i]);
 
 	   	        my @rec_i = split(/\t/, $shortest_path[$i]);
-                        my $chr = "chr".$rec_i[0];
+                        my $chr = $rec_i[0];
                         my $start = $rec_i[1];
                         my $end = $rec_i[2];
 
@@ -629,7 +630,7 @@ for(my $i = 0; $i < scalar(@shortest_path); $i++)
                         chomp($shortest_path[$i]);
 
                         my @rec_i = split(/\t/, $shortest_path[$i]);
-                        my $chr = "chr".$rec_i[0];
+                        my $chr = $rec_i[0];
                         my $start = $rec_i[1];
                         my $end = $rec_i[2];
 
