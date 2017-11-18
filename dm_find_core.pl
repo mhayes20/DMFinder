@@ -187,6 +187,19 @@ sub dfs
 
 }
 
+sub parse_vcf_record_info
+{
+	my $vcf_info_line = $_[0];
+	my %vcf_info_dictionary;
+	my @vcf_info_records = split(/\;/, $vcf_info_line);
+	foreach my $vcf_info_record (@vcf_info_records)
+	{
+		my @key_val = split(/\=/, $vcf_info_record);
+		$vcf_info_dictionary{uc $key_val[0] } = $key_val[1];
+	}
+	return 	%vcf_info_dictionary;
+}
+
 if(scalar(@ARGV) != 7)
 {
 	die("Usage is perl program.pl [SV FILE] [CN SEGMENT FILE] [WINDOW SIZE] [BAM FILE] [MINQUAL] [MIN CYCLIC] [MIN NON CYCLIC]\n");
@@ -241,12 +254,18 @@ while($line = <CN>)
 }
 
 
+my $vcf_comment_line_pattern = "^[^#]*#[^#]*\$";
+
 
 for (my $i = 0; $i < scalar(@seg_record)-1; $i++)
 {
 	
 
 			$seg_line = $seg_record[$i];
+			if ($seg_line =~ /$vcf_comment_line_pattern/)
+			{
+				next;
+			}
 			chomp($seg_line);
 			@seg_rec = split(/\t/, $seg_line);
 				
@@ -255,6 +274,11 @@ for (my $i = 0; $i < scalar(@seg_record)-1; $i++)
 
 				#Search SV file
 				$line = $SV[$k];
+				if ($line =~ /$vcf_comment_line_pattern/)
+				{
+					next;
+				}
+
 				#print "$line\n";
 				chomp($line);
 		
@@ -263,13 +287,12 @@ for (my $i = 0; $i < scalar(@seg_record)-1; $i++)
 
 				#Now get the other chromosome and position
 				
-				my $vcf_line = $temp_rec[7];
-				my @vcf_rec = split(/\;/, $vcf_line);
-				my @chr2_rec = split(/\=/, $vcf_rec[5]);
-				my @chr2_loc_rec = split(/\=/, $vcf_rec[6]);
+				my $vcf_info_line = $temp_rec[7];
+				my %vcf_info_dictionary = parse_vcf_record_info($vcf_info_line);
 
-				my $chr2 = $chr2_rec[1];
-				my $chr2_loc = $chr2_loc_rec[1];
+
+				my $chr2 = lc $vcf_info_dictionary{"CHR2"};
+				my $chr2_loc = $vcf_info_dictionary{"END"};
 				
 			
 				if(($temp_rec[0] eq $seg_rec[0] || $temp_rec[0] eq "chr".$seg_rec[0]) && abs($temp_rec[1] - $seg_rec[1]) <= $window)
@@ -556,7 +579,7 @@ foreach my $e (@scc) #Cycle through all SCCs in the graph to find potential DMs
 			chomp($shortest_path[$i]);
 
 	   	        my @rec_i = split(/\t/, $shortest_path[$i]);
-                        my $chr = "chr".$rec_i[0];
+                        my $chr = $rec_i[0];
                         my $start = $rec_i[1];
                         my $end = $rec_i[2];
 
@@ -629,7 +652,7 @@ for(my $i = 0; $i < scalar(@shortest_path); $i++)
                         chomp($shortest_path[$i]);
 
                         my @rec_i = split(/\t/, $shortest_path[$i]);
-                        my $chr = "chr".$rec_i[0];
+                        my $chr = $rec_i[0];
                         my $start = $rec_i[1];
                         my $end = $rec_i[2];
 
