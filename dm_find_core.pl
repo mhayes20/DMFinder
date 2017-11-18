@@ -196,6 +196,10 @@ sub parse_vcf_record_info
 	foreach my $vcf_info_record (@vcf_info_records)
 	{
 		my @key_val = split(/\=/, $vcf_info_record);
+		if (scalar @key_val < 2)
+		{
+			next;
+		}
 		$vcf_info_dictionary{uc $key_val[0] } = $key_val[1];
 	}
 	return 	%vcf_info_dictionary;
