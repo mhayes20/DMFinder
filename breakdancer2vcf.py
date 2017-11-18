@@ -101,8 +101,8 @@ def _format_vcffile(dictreader, vcffile):
             # TODO Figure out whether we have zero or one based positioning
             POS = int(line['Pos1'])
             SVEND = int(line['Pos2'])
-            INFO = 'PROGRAM=breakdancer;SVTYPE={};SVLEN={}'.format(line['Type'],
-                                                                   0 - int(line['Size']))
+            INFO = 'PROGRAM=breakdancer;SVTYPE={};SVLEN={};CHR2={};END={};'.format(
+                      line['Type'], 0 - int(line['Size']), line['Chr2'], int(line['Pos2'],),)
             if line['Type'] not in ['CTX']:
                 INFO += ";SVEND={}".format(SVEND)
 
@@ -125,4 +125,3 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
     main(args.breakdancertsv, args.outputvcf)
-
