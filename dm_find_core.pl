@@ -63,7 +63,7 @@ sub sampleFiles
 
 		if($count % $freq == 0)
 		{
-			print S1 "$line1";
+			#print S1 "$line1";
 		}
 
 
@@ -76,7 +76,7 @@ sub sampleFiles
 
                 if($count % $freq == 0)
                 {
-                        print S2 "$line2";
+                        #print S2 "$line2";
                 }
 
 		$count++;
@@ -128,7 +128,8 @@ sub average
 		}
 		$count++;
 	}
-	print "Sample size: $n\n";
+	
+#print "Sample size: $n\n";
 
 	#close F2;
 	close F1;
