@@ -132,35 +132,40 @@ my $window = 0; #Maximum number of base pairs to define proximity between copy n
 my $minqual = 30; #minimum read mapping quality to estimate mapping coverage [30]
 my $sv_coordinate_file;
 my $cn_coordinate_file;
+my $graph_file = "";
+my $report_file = "";
 
 sub options
 {
 	print "\nDM Finder v1.0";
 
-	print "\n\nperl dmfind.pl --input_bam {indexed and sorted bam file} --sv {structural variant coordinates in VCF format} --cn {copy number variant coordinates in BED format} [OPTIONS]\n
+	print "\n\nperl dmfind.pl [OPTIONS] --input_bam INPUT_BAM --sv SV_FILE --cn CN_FILE --report_file REPORT_FILE  --graph_file GRAPH_FILE\n
+    INPUT_BAM           indexed and sorted bam file
+    SV_FILE             structural variant coordinates in VCF format
+    CN_FILE             copy number variant coordinates in BED format
+    REPORT_FILE         path to report file with found double minutes in csv format
+    GRAPH_FILE          path to graph file with found double minutes in dot format
 OPTIONS\n
-	--min_cyclic				Minimum number of amplicons in cyclic chain to predict as a double minute [2]
-	--min_non_cyclic			Minimum number of amplicons in a non-cyclic chain to predict as a DM [2]
-	--cutoff				Cutoff coefficient of mapped read pair standard deviation [4]
-	--mean					Mean mapped distance between read pairs [400]
-	--stdev					Standard deviation of mapped distances between reads [80]
-	--minqual				Minimum read mapping quality to estimate mapping coverage [30]
-	--window				Maximum number of base pairs to define proximity between copy number breakpoint and structural variant breakpoint [2*(cutoff*stdev+mean)]\n"
+	--min_cyclic INT      Minimum number of amplicons in cyclic chain to predict as a double minute [2]
+	--min_non_cyclic INT  Minimum number of amplicons in a non-cyclic chain to predict as a DM [2]
+	--cutoff INT          Cutoff coefficient of mapped read pair standard deviation [4]
+	--mean INT            Mean mapped distance between read pairs [400]
+	--stdev	INT           Standard deviation of mapped distances between reads [80]
+	--minqual INT         Minimum read mapping quality to estimate mapping coverage [30]
+	--window INT          Maximum number of base pairs to define proximity between copy number breakpoint and structural variant breakpoint [2*(cutoff*stdev+mean)]\n"
 	
 }
 
 
-my $r = `samtools >& does_samtools_exist.txt; echo \$?`;
-
-if($r == 127)
+my $samtools_output = qx/samtools 2>&1 /;
+if($? & 127)
 {
-	system("rm does_samtools_exist.txt");
-	die("ERROR: dm_find.pl: Samtools not found. Is it in your PATH variable?\n");
+        die("ERROR: dm_find.pl: Samtools not found. Is it in your PATH variable?\n");
 }
-system("rm does_samtools_exist.txt");
-
 
 GetOptions ('input_bam=s' => \$input_bam_file,
+	    'report_file=s' => \$report_file,
+	    'graph_file=s' => \$graph_file,
 	    'sv=s' => \$sv_coordinate_file,
 	    'cn=s' => \$cn_coordinate_file,
 	    'min_cyclic=i' => \$min_cyclic,
@@ -170,6 +175,16 @@ GetOptions ('input_bam=s' => \$input_bam_file,
 	    'stdev=s' => \$stdev,
 	    'minqual=i' => \$minqual,
 	    'window=i' => \$window) or Usage("Invalid commmand line options.\n");
+
+if ( length $report_file == 0)
+{
+	die("ERROR: dm_find.pl: REPORT_FILE not specified\n");
+}
+
+if ( length $graph_file == 0)
+{
+	die("ERROR: dm_find.pl: GRAPH_FILE not specified\n");
+}
 
 if($window == 0)
 {
@@ -187,5 +202,6 @@ my %options = ();
 
 #RUN DM FINDER
 #
-
-system("perl dm_find_core.pl $sv_coordinate_file $cn_coordinate_file $window $input_bam_file $minqual $min_cyclic $min_non_cyclic"); 
+#print ("perl dm_find_core.pl $sv_coordinate_file $cn_coordinate_file $window $input_bam_file $minqual $min_cyclic $min_non_cyclic $report_file $graph_file\n");
+#exit(0);
+system("perl dm_find_core.pl $sv_coordinate_file $cn_coordinate_file $window $input_bam_file $minqual $min_cyclic $min_non_cyclic $report_file $graph_file"); 

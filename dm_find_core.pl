@@ -97,6 +97,16 @@ sub cleanup
 	system("rm temp1.zeros.txt");
 
 }
+sub write_dm_segment_to_csv_file
+{
+	my ($output_csv, $dm_idx, $dm_segments_ref, $dm_type) = @_;
+	my @dm_segments = @{$dm_segments_ref};
+	for my $dm_segment(@dm_segments)
+	{
+		my ($chr, $start, $end) = split(/\t/, $dm_segment);
+		print $output_csv "DM$dm_idx,$chr,$start,$end,$dm_type\n";
+	}
+}
 sub average
 {
 
@@ -167,7 +177,7 @@ sub dfs
 
 		else
 		{
-			if(( (not defined $explored_edges{$adj[$i]." ".$_[0]}) && (not defined $explored_edges{$_[0]." ".$adj[$i]})) || ($explored_edges{$adj[$i]." ".$_[0]} == 0 && $explored_edges{$_[0]." ".$adj[$i]} == 0))
+			if(( (not defined $explored_edges{$adj[$i]." ".$_[0]}) || (not defined $explored_edges{$_[0]." ".$adj[$i]})) || ($explored_edges{$adj[$i]." ".$_[0]} == 0 && $explored_edges{$_[0]." ".$adj[$i]} == 0))
 			{
 
 				 $h->add_weighted_edge($_[0], $adj[$i], 1);			
@@ -205,9 +215,9 @@ sub parse_vcf_record_info
 	return 	%vcf_info_dictionary;
 }
 
-if(scalar(@ARGV) != 7)
+if(scalar(@ARGV) != 9)
 {
-	die("Usage is perl program.pl [SV FILE] [CN SEGMENT FILE] [WINDOW SIZE] [BAM FILE] [MINQUAL] [MIN CYCLIC] [MIN NON CYCLIC]\n");
+	die("Usage is perl program.pl [SV FILE] [CN SEGMENT FILE] [WINDOW SIZE] [BAM FILE] [MINQUAL] [MIN CYCLIC] [MIN NON CYCLIC] [REPORT FILE] [GRAPH FILE]\n");
 }
 
 
@@ -223,6 +233,8 @@ my $bam_file = $ARGV[3];
 my $min_qual = $ARGV[4];
 my $min_cyclic = $ARGV[5];
 my $min_non_cyclic = $ARGV[6];
+my $report_file = $ARGV[7];
+my $graph_file = $ARGV[8];
 my $other_chr = "";
 my $other_pos = 0;
 my $cn_chr = "";
@@ -297,7 +309,7 @@ for (my $i = 0; $i < scalar(@seg_record)-1; $i++)
 
 
 				my $chr2 = lc $vcf_info_dictionary{"CHR2"};
-				my $chr2_loc = $vcf_info_dictionary{"END"};
+				my $chr2_loc = int($vcf_info_dictionary{"END"});
 				
 			
 				if(($temp_rec[0] eq $seg_rec[0] || $temp_rec[0] eq "chr".$seg_rec[0]) && abs($temp_rec[1] - $seg_rec[1]) <= $window)
@@ -539,10 +551,11 @@ my @shortest_path;
 my $path_total_weight = INFINITY;
 my $temp_weight = INFINITY;
 
-
+open(OUTPUT_CVS, ">$report_file") or die ("Could not create the report file $report_file\n");
+print OUTPUT_CVS "DM_index,chromosome,amplicon start,amplicon end,type\n";
+my $dm_index = 0;
 foreach my $e (@scc) #Cycle through all SCCs in the graph to find potential DMs
 {
-
 	@shortest_path = ();
 	$temp_weight = INFINITY;
 	$path_total_weight = INFINITY;
@@ -592,24 +605,24 @@ foreach my $e (@scc) #Cycle through all SCCs in the graph to find potential DMs
 			system("cat temp1.txt | awk 'BEGIN { prev_chr=\"\";prev_pos=0;} { if(\$1==prev_chr && prev_pos+1!=int(\$2)) {for(i=prev_pos+1;i<int(\$2);++i) {printf(\"%s\\t%d\\t0\\n\",\$1,i);}} print; prev_chr=\$1;prev_pos=int(\$2);}' > temp1.zeros.txt");
 
 			
-			print average("temp1.zeros.txt", $i)."\n";
+			#print average("temp1.zeros.txt", $i)."\n";
 			if(average("temp1.zeros.txt", $i) >= $max_cov)
-                        {
-                                $max_cov = average("temp1.zeros.txt", $i);
-                        }
-                        if(average("temp1.zeros.txt", $i) <= $min_cov)
-                        {
-                                $min_cov = average("temp1.zeros.txt", $i);
-                        }
+			{
+				$max_cov = average("temp1.zeros.txt", $i);
+			}
+                if(average("temp1.zeros.txt", $i) <= $min_cov)
+                {
+                        $min_cov = average("temp1.zeros.txt", $i);
+                }
 
 
 
 		}
 			
-	
 	if(scalar(@$e) > $min_cyclic && ($max_cov - $min_cov) < 35) #Enforce minimum length requirement
 	{
-		print "SEGMENTS FOR PREDICTED DOUBLE MINUTE: @shortest_path\n*************************************\n";
+		write_dm_segment_to_csv_file(*OUTPUT_CVS, ++$dm_index, \@shortest_path,'compete');
+	#print OUTPUT_CVS "SEGMENTS FOR PREDICTED DOUBLE MINUTE: @shortest_path\n*************************************\n";
 		#print REPORT "SEGMENTS FOR PREDICTED DOUBLE MINUTE: @shortest_path\n*************************************\n";
 	
 
@@ -620,74 +633,57 @@ foreach my $e (@scc) #Cycle through all SCCs in the graph to find potential DMs
 	}
 
 	$min_cov = 100000000;
-        $max_cov = 0;
-
+	$max_cov = 0;
 	my $ssize = scalar(@shortest_path);
-
-	
 	$h = $h->delete_path(@shortest_path);
-
 	@shortest_path = ();
-	open(VIZ, ">graph.dot") or die ("Could not create the graph file graph.dot\n");
-
+	open(VIZ, ">$graph_file") or die ("Could not create the graph file $graph_file\n");
 	if($viz->is_directed())
 	{
 		#die("GRAPH IS DIRECTED");
 	}
 	print VIZ $viz->as_graphviz();
-	
 	close VIZ;
-
 	B:
 }
 
 #Get connected subgraphs. These are amplicons connected by SV breakpoints that were not predicted in the first two steps.
 ##These are likely double minutes.
 my @wcc = $h->weakly_connected_components();
-
-
 foreach my $e (@wcc)
 {
-  
-@shortest_path = @$e;
-
-for(my $i = 0; $i < scalar(@shortest_path); $i++)
-{
-                       
-                        chomp($shortest_path[$i]);
-
-                        my @rec_i = split(/\t/, $shortest_path[$i]);
-                        my $chr = $rec_i[0];
-                        my $start = $rec_i[1];
-                        my $end = $rec_i[2];
-
-                        system("samtools depth -r $chr:$start-$end -Q $min_qual $bam_file > temp1.txt");
-                        system("cat temp1.txt | awk 'BEGIN { prev_chr=\"\";prev_pos=0;} { if(\$1==prev_chr && prev_pos+1!=int(\$2)) {for(i=prev_pos+1;i<int(\$2);++i) {printf(\"%s\\t%d\\t0\\n\",\$1,i);}} print; prev_chr=\$1;prev_pos=int(\$2);}' > temp1.zeros.txt");
-                        print average("temp1.zeros.txt", $i)."\n";
-
-			if(average("temp1.zeros.txt", $i) >= $max_cov)
-			{
-				$max_cov = average("temp1.zeros.txt", $i);
-			}
-			if(average("temp1.zeros.txt", $i) <= $min_cov)
-                        {
-                                $min_cov = average("temp1.zeros.txt", $i);
-                        }
-                        
-}
+	@shortest_path = @$e;
+	for(my $i = 0; $i < scalar(@shortest_path); $i++)
+	{
+		chomp($shortest_path[$i]);
+		my @rec_i = split(/\t/, $shortest_path[$i]);
+		my $chr = $rec_i[0];
+		my $start = $rec_i[1];
+		my $end = $rec_i[2];
+		system("samtools depth -r $chr:$start-$end -Q $min_qual $bam_file > temp1.txt");
+		system("cat temp1.txt | awk 'BEGIN { prev_chr=\"\";prev_pos=0;} { if(\$1==prev_chr && prev_pos+1!=int(\$2)) {for(i=prev_pos+1;i<int(\$2);++i) {printf(\"%s\\t%d\\t0\\n\",\$1,i);}} print; prev_chr=\$1;prev_pos=int(\$2);}' > temp1.zeros.txt");
+		#print average("temp1.zeros.txt", $i)."\n";
+		if(average("temp1.zeros.txt", $i) >= $max_cov)
+		{
+			$max_cov = average("temp1.zeros.txt", $i);
+		}
+		if(average("temp1.zeros.txt", $i) <= $min_cov)
+		{
+			$min_cov = average("temp1.zeros.txt", $i);
+		}
+	}
 
 
- if(scalar(@$e) > $min_non_cyclic && ($max_cov - $min_cov) < 35) #Once again, this is to ensure we don't get a predicted dmin that has only one amplicon 
-        {
-                print "SEGMENTS FOR PREDICTED INCOMPLETE DOUBLE MINUTE: @shortest_path\n*************************************\n";
-		#print REPORT "SEGMENTS FOR PREDICTED INCOMPLETE DOUBLE MINUTE: @shortest_path\n*************************************\n";
-                #print "SCC is @$e\n";
+	if(scalar(@$e) > $min_non_cyclic && ($max_cov - $min_cov) < 35) #Once again, this is to ensure we don't get a predicted dmin that has only one amplicon 
+	{
+		write_dm_segment_to_csv_file(*OUTPUT_CVS, ++$dm_index, \@shortest_path, 'incomplete');
+#print "SEGMENTS FOR PREDICTED INCOMPLETE DOUBLE MINUTE: @shortest_path\n*************************************\n";
+#print REPORT "SEGMENTS FOR PREDICTED INCOMPLETE DOUBLE MINUTE: @shortest_path\n*************************************\n";
+		#print "SCC is @$e\n";
 		$h = $h->delete_edges(@shortest_path);
-                #print "size of SCC: ".scalar(@$e)."\n";
+		#print "size of SCC: ".scalar(@$e)."\n";
 		$dm_count++;
-			
-        }
-
+	}
 	$min_cov = 100000000;
 	$max_cov = 0;
 }
@@ -697,4 +693,5 @@ C:
 cleanup();
 print "There are $dm_count predicted double minutes\n";
 #close REPORT;
+close OUTPUT_CVS;
 close SV;
