@@ -4,6 +4,7 @@ use warnings;
 use strict;
 
 use Getopt::Long;
+use File::Basename;
 
 #my $min_amp = 5; #Minimum number of amplicons in chain to predict as a dm
 #my $cutoff = 4; #Cutoff coefficient of standard deviation
@@ -202,6 +203,7 @@ my %options = ();
 
 #RUN DM FINDER
 #
-#print ("perl dm_find_core.pl $sv_coordinate_file $cn_coordinate_file $window $input_bam_file $minqual $min_cyclic $min_non_cyclic $report_file $graph_file\n");
+my $file_loc = dirname (__FILE__);
+#print ("perl $file_loc/dm_find_core.pl $sv_coordinate_file $cn_coordinate_file $window $input_bam_file $minqual $min_cyclic $min_non_cyclic $report_file $graph_file\n");
 #exit(0);
-system("perl dm_find_core.pl $sv_coordinate_file $cn_coordinate_file $window $input_bam_file $minqual $min_cyclic $min_non_cyclic $report_file $graph_file"); 
+system("perl $file_loc/dm_find_core.pl $sv_coordinate_file $cn_coordinate_file $window $input_bam_file $minqual $min_cyclic $min_non_cyclic $report_file $graph_file"); 
