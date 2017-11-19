@@ -39,18 +39,22 @@ my @edges = ();
 
 my $count_edges_added = 0;
 my $file_count = 0;
-
+my $tmp1 = "temp1.$$.txt";
+my $tmp2 = "temp2.$$.txt";
+my $tmp1_sampled = "temp1.$$.sampled.txt";
+my $tmp2_sampled = "temp2.$$.sampled.txt";
+my $tmp1_zeros   = "temp1.$$.zeros.txt";
 #open(REPORT, ">report.txt") or die("Could not create the report file!\n");
 
 sub sampleFiles
 {
 
 	my $freq = $_[0];
-	open(F1, "<temp1.txt") or die("Could not find the first coverage file!\n");
-	open(F2, "<temp2.txt") or die("Could not find the second coverage file!\n");
+	open(F1, "<$tmp1") or die("Could not find the first coverage file!\n");
+	open(F2, "<$tmp2") or die("Could not find the second coverage file!\n");
 
-	open(S1, ">temp1.sampled.txt") or die ("Could not write to the sampled file!\n");
-	open(S2, ">temp2.sampled.txt") or die("Could not write to the second samnpled file!\n");
+	open(S1, ">$tmp1_sampled") or die ("Could not write to the sampled file!\n");
+	open(S2, ">$tmp2_sampled") or die("Could not write to the second samnpled file!\n");
 
 	my $count = 0;
 
@@ -90,11 +94,11 @@ sub sampleFiles
 
 sub cleanup
 {
-	system("rm temp1.txt");
-	system("rm temp2.txt");
-	system("rm temp1.sampled.txt");
-	system("rm temp2.sampled.txt");
-	system("rm temp1.zeros.txt");
+	system("rm $tmp1");
+	system("rm $tmp2");
+	system("rm $tmp1_sampled");
+	system("rm $tmp2_sampled");
+	system("rm $tmp1_zeros");
 
 }
 sub write_dm_segment_to_csv_file
@@ -601,18 +605,18 @@ foreach my $e (@scc) #Cycle through all SCCs in the graph to find potential DMs
                         my $start = $rec_i[1];
                         my $end = $rec_i[2];
 
-			system("samtools depth -r $chr:$start-$end -Q $min_qual $bam_file > temp1.txt");
-			system("cat temp1.txt | awk 'BEGIN { prev_chr=\"\";prev_pos=0;} { if(\$1==prev_chr && prev_pos+1!=int(\$2)) {for(i=prev_pos+1;i<int(\$2);++i) {printf(\"%s\\t%d\\t0\\n\",\$1,i);}} print; prev_chr=\$1;prev_pos=int(\$2);}' > temp1.zeros.txt");
+			system("samtools depth -r $chr:$start-$end -Q $min_qual $bam_file > $tmp1");
+			system("cat $tmp1 | awk 'BEGIN { prev_chr=\"\";prev_pos=0;} { if(\$1==prev_chr && prev_pos+1!=int(\$2)) {for(i=prev_pos+1;i<int(\$2);++i) {printf(\"%s\\t%d\\t0\\n\",\$1,i);}} print; prev_chr=\$1;prev_pos=int(\$2);}' > $tmp1_zeros");
 
 			
-			#print average("temp1.zeros.txt", $i)."\n";
-			if(average("temp1.zeros.txt", $i) >= $max_cov)
+			#print average("$tmp1_zeros", $i)."\n";
+			if(average("$tmp1_zeros", $i) >= $max_cov)
 			{
-				$max_cov = average("temp1.zeros.txt", $i);
+				$max_cov = average("$tmp1_zeros", $i);
 			}
-                if(average("temp1.zeros.txt", $i) <= $min_cov)
+                if(average("$tmp1_zeros", $i) <= $min_cov)
                 {
-                        $min_cov = average("temp1.zeros.txt", $i);
+                        $min_cov = average("$tmp1_zeros", $i);
                 }
 
 
@@ -660,16 +664,16 @@ foreach my $e (@wcc)
 		my $chr = $rec_i[0];
 		my $start = $rec_i[1];
 		my $end = $rec_i[2];
-		system("samtools depth -r $chr:$start-$end -Q $min_qual $bam_file > temp1.txt");
-		system("cat temp1.txt | awk 'BEGIN { prev_chr=\"\";prev_pos=0;} { if(\$1==prev_chr && prev_pos+1!=int(\$2)) {for(i=prev_pos+1;i<int(\$2);++i) {printf(\"%s\\t%d\\t0\\n\",\$1,i);}} print; prev_chr=\$1;prev_pos=int(\$2);}' > temp1.zeros.txt");
-		#print average("temp1.zeros.txt", $i)."\n";
-		if(average("temp1.zeros.txt", $i) >= $max_cov)
+		system("samtools depth -r $chr:$start-$end -Q $min_qual $bam_file > $tmp1");
+		system("cat $tmp1 | awk 'BEGIN { prev_chr=\"\";prev_pos=0;} { if(\$1==prev_chr && prev_pos+1!=int(\$2)) {for(i=prev_pos+1;i<int(\$2);++i) {printf(\"%s\\t%d\\t0\\n\",\$1,i);}} print; prev_chr=\$1;prev_pos=int(\$2);}' > $tmp1_zeros");
+		#print average("$tmp1_zeros", $i)."\n";
+		if(average("$tmp1_zeros", $i) >= $max_cov)
 		{
-			$max_cov = average("temp1.zeros.txt", $i);
+			$max_cov = average("$tmp1_zeros", $i);
 		}
-		if(average("temp1.zeros.txt", $i) <= $min_cov)
+		if(average("$tmp1_zeros", $i) <= $min_cov)
 		{
-			$min_cov = average("temp1.zeros.txt", $i);
+			$min_cov = average("$tmp1_zeros", $i);
 		}
 	}
 
