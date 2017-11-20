@@ -225,7 +225,7 @@ for ( my $i = 0 ; $i < scalar(@seg_record) - 1 ; $i++ ) {
     my %vcf_info_dictionary = parse_vcf_record_info($vcf_info_line);
     my $chr2     = lc $vcf_info_dictionary{"CHR2"};
     my $chr2_loc = int( $vcf_info_dictionary{"END"} );
-    if ( ( $temp_rec[0] eq $seg_rec[0] || $temp_rec[0] eq "chr" . $seg_rec[0] )
+    if ( ( $temp_rec[0] eq $seg_rec[0] || $temp_rec[0] eq $seg_rec[0] )
       && abs( $temp_rec[1] - $seg_rec[1] ) <= $window )
     {
       #See if the link goes to another segment
@@ -238,7 +238,7 @@ for ( my $i = 0 ; $i < scalar(@seg_record) - 1 ; $i++ ) {
         @temp_rec_other = split( /\t/, $temp_line );
         if (
           (
-               $other_chr eq "chr" . $temp_rec_other[0]
+               $other_chr eq $temp_rec_other[0]
             || $other_chr eq $temp_rec_other[0]
           )
           && abs( $other_pos - $temp_rec_other[1] ) <= $window
@@ -254,7 +254,7 @@ for ( my $i = 0 ; $i < scalar(@seg_record) - 1 ; $i++ ) {
           goto A;
         }
         if (
-               ( $other_chr eq "chr" . $temp_rec_other[0]
+               ( $other_chr eq $temp_rec_other[0]
               || $other_chr eq $temp_rec_other[0] )
             && abs( $other_pos - $temp_rec_other[2] ) <= $window
           )    #check other end of CN segment
@@ -270,7 +270,7 @@ for ( my $i = 0 ; $i < scalar(@seg_record) - 1 ; $i++ ) {
         }
       }
     }
-    elsif ( ( $chr2 eq "chr" . $seg_rec[0] || $chr2 eq $seg_rec[0] )
+    elsif ( ( $chr2 eq $seg_rec[0] || $chr2 eq $seg_rec[0] )
       && abs( $chr2_loc - $seg_rec[1] ) <= $window )
     {
       $other_chr = $temp_rec[0];
@@ -282,7 +282,7 @@ for ( my $i = 0 ; $i < scalar(@seg_record) - 1 ; $i++ ) {
         @temp_rec_other = split( /\t/, $temp_line );
         if (
           (
-               $other_chr eq "chr" . $temp_rec_other[0]
+               $other_chr eq $temp_rec_other[0]
             || $other_chr eq $temp_rec_other[0]
           )
           && abs( $other_pos - $temp_rec_other[1] ) <= $window
@@ -299,7 +299,7 @@ for ( my $i = 0 ; $i < scalar(@seg_record) - 1 ; $i++ ) {
           goto A;
         }
         if (
-             ( $other_chr eq "chr" . $temp_rec_other[0]
+             ( $other_chr eq $temp_rec_other[0]
             || $other_chr eq $temp_rec_other[0] )
           && abs( $other_pos - $temp_rec_other[2] ) <= $window)    #check other end of CN segment
         {
@@ -316,7 +316,7 @@ for ( my $i = 0 ; $i < scalar(@seg_record) - 1 ; $i++ ) {
       }
     }
     elsif (
-      ( $temp_rec[0] eq "chr" . $seg_rec[0] || $temp_rec[0] eq $seg_rec[0] )
+      ( $temp_rec[0] eq $seg_rec[0] || $temp_rec[0] eq $seg_rec[0] )
       && abs( $temp_rec[1] - $seg_rec[2] ) <= $window )
     {
       #Start of CN segment has link
@@ -329,7 +329,7 @@ for ( my $i = 0 ; $i < scalar(@seg_record) - 1 ; $i++ ) {
         @temp_rec_other = split( /\t/, $temp_line );
         if (
           (
-               $other_chr eq "chr" . $temp_rec_other[0]
+               $other_chr eq $temp_rec_other[0]
             || $other_chr eq $temp_rec_other[0]
           )
           && abs( $other_pos - $temp_rec_other[1] ) <= $window
@@ -347,7 +347,7 @@ for ( my $i = 0 ; $i < scalar(@seg_record) - 1 ; $i++ ) {
         }
         if (
           (
-               $other_chr eq "chr" . $temp_rec_other[0]
+               $other_chr eq $temp_rec_other[0]
             || $other_chr eq $temp_rec_other[0]
           )
           && abs( $other_pos - $temp_rec_other[2] ) <= $window
@@ -364,7 +364,7 @@ for ( my $i = 0 ; $i < scalar(@seg_record) - 1 ; $i++ ) {
         }
       }
     }
-    elsif ( ( $chr2 eq "chr" . $seg_rec[0] || $chr2 eq $seg_rec[0] )
+    elsif ( ( $chr2 eq $seg_rec[0] || $chr2 eq $seg_rec[0] )
       && abs( $chr2_loc - $seg_rec[2] ) <= $window )
     {
       #End of CN segment has link
@@ -378,7 +378,7 @@ for ( my $i = 0 ; $i < scalar(@seg_record) - 1 ; $i++ ) {
         @temp_rec_other = split( /\t/, $temp_line );
         if (
           (
-               $other_chr eq "chr" . $temp_rec_other[0]
+               $other_chr eq $temp_rec_other[0]
             || $other_chr eq $temp_rec_other[0]
           )
           && abs( $other_pos - $temp_rec_other[1] ) <= $window
@@ -395,7 +395,7 @@ for ( my $i = 0 ; $i < scalar(@seg_record) - 1 ; $i++ ) {
         }
         if (
           (
-               $other_chr eq "chr" . $temp_rec_other[0]
+               $other_chr eq $temp_rec_other[0]
             || $other_chr eq $temp_rec_other[0]
           )
           && abs( $other_pos - $temp_rec_other[2] ) <= $window
