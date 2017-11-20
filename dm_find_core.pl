@@ -66,11 +66,11 @@ sub sampleFiles {
 }
 
 sub cleanup {
-  system("rm $tmp1");
-  system("rm $tmp2");
-  system("rm $tmp1_sampled");
-  system("rm $tmp2_sampled");
-  system("rm $tmp1_zeros");
+  system("rm -f $tmp1");
+  system("rm -f $tmp2");
+  system("rm -f $tmp1_sampled");
+  system("rm -f $tmp2_sampled");
+  system("rm -f $tmp1_zeros");
 }
 
 sub write_dm_segment_to_csv_file {
