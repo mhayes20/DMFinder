@@ -498,7 +498,7 @@ foreach my $e (@scc)  #Cycle through all SCCs in the graph to find potential DMs
       $min_cov = average( "$tmp1_zeros", $i );
     }
   }
-  if ( scalar(@$e) > $min_cyclic
+  if ( scalar(@shortest_path) > $min_cyclic
     && ( $max_cov - $min_cov ) < 35 )    #Enforce minimum length requirement
   {
     write_dm_segment_to_csv_file( *OUTPUT_CVS, ++$dm_index, \@shortest_path,
@@ -544,7 +544,7 @@ foreach my $e (@wcc) {
       $min_cov = average( "$tmp1_zeros", $i );
     }
   }
-  if ( scalar(@$e) > $min_non_cyclic
+  if ( scalar(@shortest_path) > $min_non_cyclic
     && ( $max_cov - $min_cov ) < 35
     ) #Once again, this is to ensure we don't get a predicted dmin that has only one amplicon
   {
