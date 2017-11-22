@@ -155,6 +155,8 @@ sub parse_vcf_record_info {
     if ( scalar @key_val < 2 ) {
       next;
     }
+    $key_val[0] =~ s/(\\r)|(\\n)|(\\)//g;
+    $key_val[1] =~ s/(\\r)|(\\n)|(\\)//g;
     $vcf_info_dictionary{ uc $key_val[0] } = $key_val[1];
   }
   return %vcf_info_dictionary;
@@ -199,6 +201,7 @@ my $seg_line = "";
 my @seg_rec  = ();
 while ( $line = <CN> ) {
   @record = split( /\t/, $line );
+  $line =~ s/(\\r)|(\\n)|(\\)//g;
   push @seg_record, $line;
 }
 my $vcf_comment_line_pattern = "^[^#]*#[^#]*\$";
