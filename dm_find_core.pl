@@ -124,8 +124,7 @@ sub dfs {
       $explored_edges{ $_[0] . " " . $adj[$i] } = 1;
       $explored_edges{ $adj[$i] . " " . $_[0] } = 1;
       dfs( $adj[$i] );
-    }
-    else {
+    } else {
       if (
         (
              ( not defined $explored_edges{ $adj[$i] . " " . $_[0] } )
@@ -225,7 +224,7 @@ for ( my $i = 0 ; $i < scalar(@seg_record) - 1 ; $i++ ) {
     my %vcf_info_dictionary = parse_vcf_record_info($vcf_info_line);
     my $chr2     = lc $vcf_info_dictionary{"CHR2"};
     my $chr2_loc = int( $vcf_info_dictionary{"END"} );
-    if ( ( $temp_rec[0] eq $seg_rec[0] || $temp_rec[0] eq $seg_rec[0] )
+    if ( $temp_rec[0] eq $seg_rec[0] 
       && abs( $temp_rec[1] - $seg_rec[1] ) <= $window )
     {
       #See if the link goes to another segment
@@ -236,26 +235,19 @@ for ( my $i = 0 ; $i < scalar(@seg_record) - 1 ; $i++ ) {
         $temp_line = $seg_record[$j];
         chomp($temp_line);
         @temp_rec_other = split( /\t/, $temp_line );
-        if (
-          (
-               $other_chr eq $temp_rec_other[0]
-            || $other_chr eq $temp_rec_other[0]
-          )
-          && abs( $other_pos - $temp_rec_other[1] ) <= $window
-          )
+        if ( $other_chr eq $temp_rec_other[0]
+          && abs( $other_pos - $temp_rec_other[1] ) <= $window )
         {
           #print "Edge added 1: \n".$seg_record[$i]."\n".$seg_record[$j]."\n";
           $g->add_edge( $seg_record[$i], $seg_record[$j] );
           $explored{ $seg_record[$i] } = 0;
           $explored{ $seg_record[$j] } = 0;
-          $explored_edges{ $seg_record[$i] . " " . $seg_record[$j] } =
-            0;
+          my $edge = $seg_record[$i] . " " . $seg_record[$j];
+          $explored_edges{ $edge } = 0;
           $viz->add_edge_once( $seg_record[$i], $seg_record[$j] );
           goto A;
         }
-        if (
-               ( $other_chr eq $temp_rec_other[0]
-              || $other_chr eq $temp_rec_other[0] )
+        if ( $other_chr eq $temp_rec_other[0]
             && abs( $other_pos - $temp_rec_other[2] ) <= $window
           )    #check other end of CN segment
         {
@@ -263,8 +255,8 @@ for ( my $i = 0 ; $i < scalar(@seg_record) - 1 ; $i++ ) {
           $g->add_edge( $seg_record[$i], $seg_record[$j] );
           $explored{ $seg_record[$i] } = 0;
           $explored{ $seg_record[$j] } = 0;
-          $explored_edges{ $seg_record[$i] . " " . $seg_record[$j] } =
-            0;
+          my $edge = $seg_record[$i] . " " . $seg_record[$j];
+          $explored_edges{ $edge } = 0;
           $viz->add_edge_once( $seg_record[$i], $seg_record[$j] );
           goto A;
         }
@@ -280,44 +272,36 @@ for ( my $i = 0 ; $i < scalar(@seg_record) - 1 ; $i++ ) {
         $temp_line = $seg_record[$j];
         chomp($temp_line);
         @temp_rec_other = split( /\t/, $temp_line );
-        if (
-          (
-               $other_chr eq $temp_rec_other[0]
-            || $other_chr eq $temp_rec_other[0]
-          )
-          && abs( $other_pos - $temp_rec_other[1] ) <= $window
-          )
+        if ( $other_chr eq $temp_rec_other[0]
+          && abs( $other_pos - $temp_rec_other[1] ) <= $window )
         {
           #print "Edge added 3: \n".$seg_record[$i]."\n".$seg_record[$j]."\n";
           $g->add_edge( $seg_record[$i], $seg_record[$j] );
 
           $explored{ $seg_record[$i] } = 0;
           $explored{ $seg_record[$j] } = 0;
-          $explored_edges{ $seg_record[$i] . " " . $seg_record[$j] } =
-            0;
+          my $edge = $seg_record[$i] . " " . $seg_record[$j];
+          $explored_edges{ $edge } = 0;
           $viz->add_edge_once( $seg_record[$i], $seg_record[$j] );
           goto A;
         }
-        if (
-             ( $other_chr eq $temp_rec_other[0]
-            || $other_chr eq $temp_rec_other[0] )
+        if ( $other_chr eq $temp_rec_other[0]
           && abs( $other_pos - $temp_rec_other[2] ) <= $window)    #check other end of CN segment
         {
           #print "Edge added 4: \n".$seg_record[$i]."\n".$seg_record[$j]."\n";
           $g->add_edge( $seg_record[$i], $seg_record[$j] );
           $explored{ $seg_record[$i] } = 0;
           $explored{ $seg_record[$j] } = 0;
-          $explored_edges{ $seg_record[$i] . " " . $seg_record[$j] } =
-            0;
+          my $edge = $seg_record[$i] . " " . $seg_record[$j];
+          $explored_edges{ $edge } = 0;
           $viz->add_edge_once( $seg_record[$i], $seg_record[$j] );
           goto A;
         }
 
       }
     }
-    elsif (
-      ( $temp_rec[0] eq $seg_rec[0] || $temp_rec[0] eq $seg_rec[0] )
-      && abs( $temp_rec[1] - $seg_rec[2] ) <= $window )
+    elsif ( $temp_rec[0] eq $seg_rec[0] 
+         && abs( $temp_rec[1] - $seg_rec[2] ) <= $window )
     {
       #Start of CN segment has link
       $other_chr = $chr2;
@@ -327,13 +311,8 @@ for ( my $i = 0 ; $i < scalar(@seg_record) - 1 ; $i++ ) {
         $temp_line = $seg_record[$j];
         chomp($temp_line);
         @temp_rec_other = split( /\t/, $temp_line );
-        if (
-          (
-               $other_chr eq $temp_rec_other[0]
-            || $other_chr eq $temp_rec_other[0]
-          )
-          && abs( $other_pos - $temp_rec_other[1] ) <= $window
-          )
+        if ( $other_chr eq $temp_rec_other[0]
+          && abs( $other_pos - $temp_rec_other[1] ) <= $window )
         {
        #ADD EDGE
        #SV link at start of current CN segment goes to start of other CN segment
@@ -341,15 +320,12 @@ for ( my $i = 0 ; $i < scalar(@seg_record) - 1 ; $i++ ) {
           $g->add_edge( $seg_record[$i], $seg_record[$j] );
           $explored{ $seg_record[$i] } = 0;
           $explored{ $seg_record[$j] } = 0;
-          $explored_edges{ $seg_record[$i] . " " . $seg_record[$j] } = 0;
+          my $edge = $seg_record[$i] . " " . $seg_record[$j];
+          $explored_edges{ $edge } = 0;
           $viz->add_edge_once( $seg_record[$i], $seg_record[$j] );
           goto A;
         }
-        if (
-          (
-               $other_chr eq $temp_rec_other[0]
-            || $other_chr eq $temp_rec_other[0]
-          )
+        if ( $other_chr eq $temp_rec_other[0]
           && abs( $other_pos - $temp_rec_other[2] ) <= $window
           )    #check other end of CN segment
         {
@@ -357,8 +333,8 @@ for ( my $i = 0 ; $i < scalar(@seg_record) - 1 ; $i++ ) {
           $g->add_edge( $seg_record[$i], $seg_record[$j] );
           $explored{ $seg_record[$i] } = 0;
           $explored{ $seg_record[$j] } = 0;
-          $explored_edges{ $seg_record[$i] . " " . $seg_record[$j] } =
-            0;
+          my $edge = $seg_record[$i] . " " . $seg_record[$j];
+          $explored_edges{ $edge } = 0;
           $viz->add_edge_once( $seg_record[$i], $seg_record[$j] );
           goto A;
         }
@@ -376,28 +352,19 @@ for ( my $i = 0 ; $i < scalar(@seg_record) - 1 ; $i++ ) {
         $temp_line = $seg_record[$j];
         chomp($temp_line);
         @temp_rec_other = split( /\t/, $temp_line );
-        if (
-          (
-               $other_chr eq $temp_rec_other[0]
-            || $other_chr eq $temp_rec_other[0]
-          )
-          && abs( $other_pos - $temp_rec_other[1] ) <= $window
-          )
+        if ( $other_chr eq $temp_rec_other[0]
+          && abs( $other_pos - $temp_rec_other[1] ) <= $window )
         {
           #print "Edge added 7: \n".$seg_record[$i]."\n".$seg_record[$j]."\n";
           $g->add_edge( $seg_record[$i], $seg_record[$j] );
           $explored{ $seg_record[$i] } = 0;
           $explored{ $seg_record[$j] } = 0;
-          $explored_edges{ $seg_record[$i] . " " . $seg_record[$j] } =
-            0;
+          my $edge = $seg_record[$i] . " " . $seg_record[$j];
+          $explored_edges{ $edge } = 0;
           $viz->add_edge_once( $seg_record[$i], $seg_record[$j] );
           goto A;
         }
-        if (
-          (
-               $other_chr eq $temp_rec_other[0]
-            || $other_chr eq $temp_rec_other[0]
-          )
+        if ( $other_chr eq $temp_rec_other[0]
           && abs( $other_pos - $temp_rec_other[2] ) <= $window
           )    #check other end of CN segment
         {
@@ -405,8 +372,8 @@ for ( my $i = 0 ; $i < scalar(@seg_record) - 1 ; $i++ ) {
           $g->add_edge( $seg_record[$i], $seg_record[$j] );
           $explored{ $seg_record[$i] } = 0;
           $explored{ $seg_record[$j] } = 0;
-          $explored_edges{ $seg_record[$i] . " " . $seg_record[$j] } =
-            0;
+          my $edge = $seg_record[$i] . " " . $seg_record[$j];
+          $explored_edges{ $edge } = 0;
           $viz->add_edge_once( $seg_record[$i], $seg_record[$j] );
           goto A;
         }
@@ -420,17 +387,7 @@ my @V = $g->vertices;
 foreach my $e (@V) {
   dfs($e);
 }
-my $u = 0;
-my $v = 0;
-for ( $e = 0 ; $e < scalar(@edges) ; $e++ ) {
-  $u = $edges[$e][0];
-  $v = $edges[$e][1];
-}
 
-for ( $e = 0 ; $e < scalar(@edges) ; $e++ ) {
-  $u = $edges[$e][0];
-  $v = $edges[$e][1];
-}
 close CN;
 #print "The undirected graph is $g\n";
 #print "The directed graph is $h\n";
