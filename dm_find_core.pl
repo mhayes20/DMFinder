@@ -94,7 +94,7 @@ sub average {
   my $val;
   my @record = ();
   while ( $line = <F1> ) {
-    chomp($line);
+    $line =~ s/\R//g;
     @record = split( /\t/, $line );
     $val = $record[2];
     if ( $count % 100 == 0 ) {
@@ -226,7 +226,6 @@ my $sv_chr_i_bp = "";
 my $e           = "";
 my $sv_chr_j    = "";
 my $sv_chr_j_bp = "";
-my @record     = ();
 my @seg_record = ();    #will store all amplified segment records
 my $startFlag =
   0;  #1 if graph constructor should look at start of a CN segment, 0 otherwise.
@@ -237,7 +236,6 @@ my @temp_rec_other = ();
 my $seg_line = "";
 my @seg_rec  = ();
 while ( $line = <CN> ) {
-  @record = split( /\t/, $line );
   $line =~ s/\R//g;
   push @seg_record, $line;
 }
@@ -265,14 +263,14 @@ for ( my $i = 0 ; $i < scalar(@seg_record) - 1 ; $i++ ) {
     my $chr2     = lc $vcf_info_dictionary{"CHR2"};
     my $chr2_loc = int( $vcf_info_dictionary{"END"} );
     if ( $temp_rec[0] eq $seg_rec[0] &&
-           ( abs( $temp_rec[1] - $seg_rec[1] ) <= $window
-          || abs( $temp_rec[1] - $seg_rec[2] ) <= $window ) )
+           ( abs( int( $temp_rec[1] ) - int( $seg_rec[1] ) ) <= $window
+          || abs( int( $temp_rec[1] ) - int( $seg_rec[2] ) ) <= $window ) )
     {
       addEdgeIfExist( \@seg_record, $chr2, $chr2_loc, $i, $window);
     }
     elsif ( $chr2 eq $seg_rec[0] &&
-             ( abs( $chr2_loc - $seg_rec[1] ) <= $window 
-            || abs( $chr2_loc - $seg_rec[2] ) <= $window ) )
+             ( abs( int( $chr2_loc ) - int( $seg_rec[1] ) ) <= $window 
+            || abs( int( $chr2_loc ) - int( $seg_rec[2] ) ) <= $window ) )
     {
       addEdgeIfExist( \@seg_record, $temp_rec[0], $temp_rec[1], $i, $window);
     }
