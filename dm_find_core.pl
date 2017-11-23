@@ -236,7 +236,6 @@ my @temp_rec_other = ();
 my $seg_line = "";
 my @seg_rec  = ();
 while ( $line = <CN> ) {
-  $line =~ s/\R//g;
   push @seg_record, $line;
 }
 my $vcf_comment_line_pattern = "^[^#]*#[^#]*\$";
