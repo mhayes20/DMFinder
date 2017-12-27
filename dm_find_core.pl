@@ -236,9 +236,11 @@ my @temp_rec_other = ();
 my $seg_line = "";
 my @seg_rec  = ();
 while ( $line = <CN> ) {
+  $line =~ s/(\\r)|(\\n)//g;
   push @seg_record, $line;
 }
-my $vcf_comment_line_pattern = "^[^#]*#[^#]*\$";
+
+my $vcf_comment_line_pattern = "^#.*";
 for ( my $i = 0 ; $i < scalar(@seg_record) - 1 ; $i++ ) {
   $seg_line = $seg_record[$i];
   if ( $seg_line =~ /$vcf_comment_line_pattern/ ) {
@@ -348,7 +350,7 @@ foreach my $e (@scc)  #Cycle through all SCCs in the graph to find potential DMs
       $min_cov = average( "$tmp1_zeros", $i );
     }
   }
-  if ( scalar(@shortest_path) > $min_cyclic
+  if ( scalar(@$e) > $min_cyclic
     && ( $max_cov - $min_cov ) < 35 )    #Enforce minimum length requirement
   {
     write_dm_segment_to_csv_file( *OUTPUT_CVS, ++$dm_index, \@shortest_path,
@@ -394,7 +396,7 @@ foreach my $e (@wcc) {
       $min_cov = average( "$tmp1_zeros", $i );
     }
   }
-  if ( scalar(@shortest_path) > $min_non_cyclic
+  if ( scalar(@$e) > $min_non_cyclic
     && ( $max_cov - $min_cov ) < 35
     ) #Once again, this is to ensure we don't get a predicted dmin that has only one amplicon
   {
