@@ -18,6 +18,7 @@ my $h        = Graph::Directed->new;
 my $viz      = Graph::Easy->new( { 'undirected', 'true' } );
 my $dviz     = Graph::Easy->new( { 'undirected', 'false' } );
 my $dm_count = 0;
+my $dm_complete_count = 0;
 if ( $viz->is_directed() ) {
   die;
 }
@@ -155,8 +156,8 @@ sub parse_vcf_record_info {
     if ( scalar @key_val < 2 ) {
       next;
     }
-    $key_val[0] =~ s/\R//g;
-    $key_val[1] =~ s/\R//g;
+#    $key_val[0] =~ s/\R//g;
+#    $key_val[1] =~ s/\R//g;
     $vcf_info_dictionary{ uc $key_val[0] } = $key_val[1];
   }
   return %vcf_info_dictionary;
@@ -236,8 +237,9 @@ my @temp_rec_other = ();
 my $seg_line = "";
 my @seg_rec  = ();
 while ( $line = <CN> ) {
-  $line =~ s/(\\r)|(\\n)//g;
-  push @seg_record, $line;
+  if ($line =~ /(\w+)\t(\w+)\t(\w+)/) {
+    push @seg_record, "$1\t$2\t$3";
+  }
 }
 
 my $vcf_comment_line_pattern = "^#.*";
@@ -318,6 +320,9 @@ foreach my $e (@scc)  #Cycle through all SCCs in the graph to find potential DMs
         && ( defined $apsp->path_length( $m, $n ) )
         && $apsp->path_length( $m, $n ) ne '' )
       {
+        if ($apsp->path_length( $m, $n ) == 1) {
+          next;
+        }
         #Now return shortest path from m to n
         $temp_weight =
           $h->get_edge_weight( $n, $m ) + $apsp->path_length( $m, $n );
@@ -330,6 +335,9 @@ foreach my $e (@scc)  #Cycle through all SCCs in the graph to find potential DMs
         }
       }
     }
+  }
+  if (scalar(@shortest_path) == 0) {
+    next;
   }
   for ( my $i = 0 ; $i < scalar(@shortest_path) ; $i++ ) {
     chomp( $shortest_path[$i] );
@@ -350,21 +358,23 @@ foreach my $e (@scc)  #Cycle through all SCCs in the graph to find potential DMs
       $min_cov = average( "$tmp1_zeros", $i );
     }
   }
-  if ( scalar(@$e) > $min_cyclic
-    && ( $max_cov - $min_cov ) < 35 )    #Enforce minimum length requirement
+   if ( scalar(@shortest_path) > $min_cyclic  #Enforce minimum length requirement
+    && ( $max_cov - $min_cov ) < 35
+     )  
   {
     write_dm_segment_to_csv_file( *OUTPUT_CVS, ++$dm_index, \@shortest_path,
       'compete' );
 #print OUTPUT_CVS "SEGMENTS FOR PREDICTED DOUBLE MINUTE: @shortest_path\n*************************************\n";
 #print REPORT "SEGMENTS FOR PREDICTED DOUBLE MINUTE: @shortest_path\n*************************************\n";
-    #print "SCC is @$e\n";
-    #print "size of SCC: ".scalar(@$e)."\n";
+#print "SCC is @$e\n";
+#print "size of SCC: ".scalar(@$e)."\n";
     $dm_count++;
+    $dm_complete_count++;
   }
   $min_cov = 100000000;
   $max_cov = 0;
   my $ssize = scalar(@shortest_path);
-  $h = $h->delete_path(@shortest_path);
+  $h->delete_vertices(@shortest_path);
   @shortest_path = ();
   open( VIZ, ">$graph_file" )
     or die("Could not create the graph file $graph_file\n");
@@ -377,6 +387,7 @@ B:
 }
 #Get connected subgraphs. These are amplicons connected by SV breakpoints that were not predicted in the first two steps.
 ##These are likely double minutes.
+#print "Looking for WCC...\n";
 my @wcc = $h->weakly_connected_components();
 foreach my $e (@wcc) {
   @shortest_path = @$e;
@@ -396,7 +407,10 @@ foreach my $e (@wcc) {
       $min_cov = average( "$tmp1_zeros", $i );
     }
   }
-  if ( scalar(@$e) > $min_non_cyclic
+#print "SCC is @$e\n";
+#print "size of shortest_path: ".scalar(@shortest_path)."\n";
+#print "max_cov=$max_cov, min_cov=$min_cov\n";
+  if ( scalar(@shortest_path) >= $min_non_cyclic
     && ( $max_cov - $min_cov ) < 35
     ) #Once again, this is to ensure we don't get a predicted dmin that has only one amplicon
   {
@@ -405,8 +419,8 @@ foreach my $e (@wcc) {
 #print "SEGMENTS FOR PREDICTED INCOMPLETE DOUBLE MINUTE: @shortest_path\n*************************************\n";
 #print REPORT "SEGMENTS FOR PREDICTED INCOMPLETE DOUBLE MINUTE: @shortest_path\n*************************************\n";
 #print "SCC is @$e\n";
-    $h = $h->delete_edges(@shortest_path);
-    #print "size of SCC: ".scalar(@$e)."\n";
+    $h->delete_vertices(@shortest_path);
+#print "size of SCC: ".scalar(@$e)."\n";
     $dm_count++;
   }
   $min_cov = 100000000;
@@ -414,7 +428,7 @@ foreach my $e (@wcc) {
 }
 C:
 cleanup();
-print "There are $dm_count predicted double minutes\n";
+print "There are $dm_count predicted double minutes, including $dm_complete_count perfectly identified.\n";
 #close REPORT;
 close OUTPUT_CVS;
 close SV;
