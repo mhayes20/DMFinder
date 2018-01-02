@@ -198,11 +198,22 @@ sub addEdgeIfExist
   }
 }    
 
+sub print_discarded_double_minute {
+  my $shortest_path_ref = shift;
+  my $average_cov_ref   = shift; 
+  my $dm_type           = shift;
+  my @shortest_path     = @$shortest_path_ref;
+  my @average_cov       = @$average_cov_ref;
+  print "Following possible $dm_type double minute has been discarded due to ";
+  print "high variance of average mapping coverage among the amplicons:\n";
+  print "@shortest_path\n";
+  print "The averave mapping coverages of the amplicons are:\n@average_cov\n\n";
+}
 
-if ( scalar(@ARGV) != 9 ) {
-  die(
-"Usage is perl program.pl [SV FILE] [CN SEGMENT FILE] [WINDOW SIZE] [BAM FILE] [MINQUAL] [MIN CYCLIC] [MIN NON CYCLIC] [REPORT FILE] [GRAPH FILE]\n"
-  );
+if ( scalar(@ARGV) != 10 ) {
+  die("Usage: perl program.pl [SV FILE] [CN SEGMENT FILE] [WINDOW SIZE] 
+                              [BAM FILE] [MINQUAL] [MIN CYCLIC] [MIN NON CYCLIC]
+                              [REPORT FILE] [GRAPH FILE] [VERBOSITY]\n");
 }
 open( SV, "<" . $ARGV[0] )
   or die("Could not open structural variant breakpoint file!\n");
@@ -217,6 +228,7 @@ my $min_cyclic     = $ARGV[5];
 my $min_non_cyclic = $ARGV[6];
 my $report_file    = $ARGV[7];
 my $graph_file     = $ARGV[8];
+my $verbose      = $ARGV[9];
 my $other_chr      = "";
 my $other_pos      = 0;
 my $cn_chr         = "";
@@ -227,9 +239,10 @@ my $sv_chr_i_bp = "";
 my $e           = "";
 my $sv_chr_j    = "";
 my $sv_chr_j_bp = "";
-my @seg_record = ();    #will store all amplified segment records
-my $startFlag =
-  0;  #1 if graph constructor should look at start of a CN segment, 0 otherwise.
+my @seg_record = (); # will store all amplified segment records
+my $startFlag =  0;  # 1 if graph constructor should look at start 
+                     # of a CN segment, 0 otherwise.
+
 my @SV = ();
 my @temp_rec       = ();
 my @temp_rec_other = ();
@@ -339,6 +352,7 @@ foreach my $e (@scc)  #Cycle through all SCCs in the graph to find potential DMs
   if (scalar(@shortest_path) == 0) {
     next;
   }
+  my @average_cov = ();
   for ( my $i = 0 ; $i < scalar(@shortest_path) ; $i++ ) {
     chomp( $shortest_path[$i] );
     my @rec_i = split( /\t/, $shortest_path[$i] );
@@ -351,19 +365,26 @@ foreach my $e (@scc)  #Cycle through all SCCs in the graph to find potential DMs
 "cat $tmp1 | awk 'BEGIN { prev_chr=\"\";prev_pos=0;} { if(\$1==prev_chr && prev_pos+1!=int(\$2)) {for(i=prev_pos+1;i<int(\$2);++i) {printf(\"%s\\t%d\\t0\\n\",\$1,i);}} print; prev_chr=\$1;prev_pos=int(\$2);}' > $tmp1_zeros"
     );
     #print average("$tmp1_zeros", $i)."\n";
-    if ( average( "$tmp1_zeros", $i ) >= $max_cov ) {
-      $max_cov = average( "$tmp1_zeros", $i );
+    my $amplicon_average_cov = average( "$tmp1_zeros", $i );
+    if ( $amplicon_average_cov >= $max_cov ) {
+      $max_cov = $amplicon_average_cov;
     }
-    if ( average( "$tmp1_zeros", $i ) <= $min_cov ) {
-      $min_cov = average( "$tmp1_zeros", $i );
+    if ( $amplicon_average_cov <= $min_cov ) {
+      $min_cov = $amplicon_average_cov;
     }
+    push @average_cov, int($amplicon_average_cov);
   }
-   if ( scalar(@shortest_path) > $min_cyclic  #Enforce minimum length requirement
+  if ( $verbose && $max_cov - $min_cov >= 35) {
+    print_discarded_double_minute(\@shortest_path, \@average_cov, "complete");
+  }
+  if ( scalar(@shortest_path) > $min_cyclic  #Enforce minimum length requirement
     && ( $max_cov - $min_cov ) < 35
      )  
   {
-    write_dm_segment_to_csv_file( *OUTPUT_CVS, ++$dm_index, \@shortest_path,
-      'compete' );
+    write_dm_segment_to_csv_file( *OUTPUT_CVS, 
+                                  ++$dm_index, 
+                                  \@shortest_path,
+                                  'complete' );
 #print OUTPUT_CVS "SEGMENTS FOR PREDICTED DOUBLE MINUTE: @shortest_path\n*************************************\n";
 #print REPORT "SEGMENTS FOR PREDICTED DOUBLE MINUTE: @shortest_path\n*************************************\n";
 #print "SCC is @$e\n";
@@ -390,7 +411,8 @@ B:
 #print "Looking for WCC...\n";
 my @wcc = $h->weakly_connected_components();
 foreach my $e (@wcc) {
-  @shortest_path = @$e;
+  my @shortest_path = @$e;
+  my @average_cov = ();
   for ( my $i = 0 ; $i < scalar(@shortest_path) ; $i++ ) {
     chomp( $shortest_path[$i] );
     my @rec_i = split( /\t/, $shortest_path[$i] );
@@ -400,13 +422,26 @@ foreach my $e (@wcc) {
     system( "samtools depth -r $chr:$start-$end -Q $min_qual $bam_file > $tmp1" );
     system( "cat $tmp1 | awk 'BEGIN { prev_chr=\"\";prev_pos=0;} { if(\$1==prev_chr && prev_pos+1!=int(\$2)) {for(i=prev_pos+1;i<int(\$2);++i) {printf(\"%s\\t%d\\t0\\n\",\$1,i);}} print; prev_chr=\$1;prev_pos=int(\$2);}' > $tmp1_zeros" );
     #print average("$tmp1_zeros", $i)."\n";
-    if ( average( "$tmp1_zeros", $i ) >= $max_cov ) {
-      $max_cov = average( "$tmp1_zeros", $i );
+#    if ( average( "$tmp1_zeros", $i ) >= $max_cov ) {
+#      $max_cov = average( "$tmp1_zeros", $i );
+#    }
+#    if ( average( "$tmp1_zeros", $i ) <= $min_cov ) {
+#      $min_cov = average( "$tmp1_zeros", $i );
+#    }
+#  }
+    my $amplicon_average_cov = average( "$tmp1_zeros", $i );
+    if ( $amplicon_average_cov >= $max_cov ) {
+      $max_cov = $amplicon_average_cov;
     }
-    if ( average( "$tmp1_zeros", $i ) <= $min_cov ) {
-      $min_cov = average( "$tmp1_zeros", $i );
+    if ( $amplicon_average_cov <= $min_cov ) {
+      $min_cov = $amplicon_average_cov;
     }
+    push @average_cov, int($amplicon_average_cov);
   }
+  if ( $verbose && $max_cov - $min_cov >= 35) {
+    print_discarded_double_minute(\@shortest_path, \@average_cov, 'incomplete');
+  }
+ 
 #print "SCC is @$e\n";
 #print "size of shortest_path: ".scalar(@shortest_path)."\n";
 #print "max_cov=$max_cov, min_cov=$min_cov\n";
@@ -414,8 +449,10 @@ foreach my $e (@wcc) {
     && ( $max_cov - $min_cov ) < 35
     ) #Once again, this is to ensure we don't get a predicted dmin that has only one amplicon
   {
-    write_dm_segment_to_csv_file( *OUTPUT_CVS, ++$dm_index, \@shortest_path,
-      'incomplete' );
+    write_dm_segment_to_csv_file( *OUTPUT_CVS, 
+                                  ++$dm_index,
+                                  \@shortest_path,
+                                 'incomplete' );
 #print "SEGMENTS FOR PREDICTED INCOMPLETE DOUBLE MINUTE: @shortest_path\n*************************************\n";
 #print REPORT "SEGMENTS FOR PREDICTED INCOMPLETE DOUBLE MINUTE: @shortest_path\n*************************************\n";
 #print "SCC is @$e\n";
