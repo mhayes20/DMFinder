@@ -1,9 +1,5 @@
 #!/usr/bin/perl
 
-use lib("/nfs/gpfs/PDS0257/cwr0353/SAM_REPOSITORY/SIM/TEST_TEMP/BIOINFORMATICS/NEW_DIRECTORY/DM_FIND/Graph-0.94/lib");
-#Will change to "use Graph;"
-use lib("/nfs/gpfs/PDS0257/cwr0353/SAM_REPOSITORY/SIM/TEST_TEMP/BIOINFORMATICS/NEW_DIRECTORY/DM_FIND/Graph-Easy-0.64/lib");
-
 use Graph::Easy;
 use Graph::Directed;
 use Graph::Undirected;
@@ -147,6 +143,21 @@ sub dfs {
   }
 }
 
+sub read_amplicon_list
+{
+  my $path_cn_file = shift;
+  open( CN, "<" . $path_cn_file)
+    or die("Could not open copy number amplification file!\n");
+  my $line;
+  my @amplicon_list;
+  while ( $line = <CN> ) {
+    if ($line =~ /(\w+)\t(\w+)\t(\w+)/) {
+      push @amplicon_list, "$1\t$2\t$3";
+    }
+  }
+  return @amplicon_list;
+}
+
 sub parse_vcf_record_info {
   my $vcf_info_line = $_[0];
   my %vcf_info_dictionary;
@@ -168,7 +179,6 @@ sub parse_vcf_line
   my $line = shift;
   chomp($line);
   my @temp_rec = split( /\t/, $line );
-  #Now get the other chromosome and position
   my $vcf_info_line       = $temp_rec[7];
   my %vcf_info_dictionary = parse_vcf_record_info($vcf_info_line);
   my %edge;
@@ -176,13 +186,12 @@ sub parse_vcf_line
   $edge{"start_pos"} = int($temp_rec[1]);
   $edge{"end_chr"}   = lc $vcf_info_dictionary{"CHR2"};
   $edge{"end_pos"}   = int( $vcf_info_dictionary{"END"} );
-  my $chr2_loc = int( $vcf_info_dictionary{"END"} );
   return %edge; 
 }
 
 sub add_edge_if_exist
 {
-  my $amplicon_list_ref     = shift;
+  my $amplicon_list_ref  = shift;
   my $other_chr          = shift;
   my $other_pos          = shift;
   my $i                  = shift;
@@ -234,43 +243,36 @@ if ( scalar(@ARGV) != 10 ) {
 }
 open( SV, "<" . $ARGV[0] )
   or die("Could not open structural variant breakpoint file!\n");
-open( CN, "<" . $ARGV[1] )
-  or die("Could not open copy number amplification file!\n");
 my $line      = "";
 my $temp_line = "";
-my $window         = $ARGV[2];
-my $bam_file       = $ARGV[3];
-my $min_qual       = $ARGV[4];
-my $min_cyclic     = $ARGV[5];
-my $min_non_cyclic = $ARGV[6];
-my $report_file    = $ARGV[7];
-my $graph_file     = $ARGV[8];
-my $verbose        = $ARGV[9];
+my $path_to_cn_file = $ARGV[1];
+my $window          = $ARGV[2];
+my $bam_file        = $ARGV[3];
+my $min_qual        = $ARGV[4];
+my $min_cyclic      = $ARGV[5];
+my $min_non_cyclic  = $ARGV[6];
+my $report_file     = $ARGV[7];
+my $graph_file      = $ARGV[8];
+my $verbose         = $ARGV[9];
 my $e           = "";
 my @amplicon_list = (); # will store all amplified segment records
 my $startFlag =  0;  # 1 if graph constructor should look at start 
                      # of a CN segment, 0 otherwise.
 
+@amplicon_list = read_amplicon_list($path_to_cn_file);
+
 my @SV = ();
-my @temp_rec       = ();
-my @temp_rec_other = ();
+
 @SV = <SV>;
-my $seg_line = "";
-my @seg_rec  = ();
-while ( $line = <CN> ) {
-  if ($line =~ /(\w+)\t(\w+)\t(\w+)/) {
-    push @amplicon_list, "$1\t$2\t$3";
-  }
-}
 
 my $vcf_comment_line_pattern = "^#.*";
 for ( my $i = 0 ; $i < scalar(@amplicon_list) - 1 ; $i++ ) {
-  $seg_line = $amplicon_list[$i];
+  my $seg_line = $amplicon_list[$i];
   if ( $seg_line =~ /$vcf_comment_line_pattern/ ) {
     next;
   }
   chomp($seg_line);
-  @seg_rec = split( /\t/, $seg_line );
+  my @seg_rec = split( /\t/, $seg_line );
   my %amplicon;
   $amplicon{"chr"}   = $seg_rec[0];
   $amplicon{"start"} = int($seg_rec[1]);
