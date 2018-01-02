@@ -163,7 +163,7 @@ sub parse_vcf_record_info {
   return %vcf_info_dictionary;
 }
 
-sub addEdgeIfExist
+sub add_edge_if_exist
 {
   my $seg_record_ref     = shift;
   my $other_chr          = shift;
@@ -282,13 +282,13 @@ for ( my $i = 0 ; $i < scalar(@seg_record) - 1 ; $i++ ) {
            ( abs( int( $temp_rec[1] ) - int( $seg_rec[1] ) ) <= $window
           || abs( int( $temp_rec[1] ) - int( $seg_rec[2] ) ) <= $window ) )
     {
-      addEdgeIfExist( \@seg_record, $chr2, $chr2_loc, $i, $window);
+      add_edge_if_exist( \@seg_record, $chr2, $chr2_loc, $i, $window);
     }
     elsif ( $chr2 eq $seg_rec[0] &&
              ( abs( int( $chr2_loc ) - int( $seg_rec[1] ) ) <= $window 
             || abs( int( $chr2_loc ) - int( $seg_rec[2] ) ) <= $window ) )
     {
-      addEdgeIfExist( \@seg_record, $temp_rec[0], $temp_rec[1], $i, $window);
+      add_edge_if_exist( \@seg_record, $temp_rec[0], $temp_rec[1], $i, $window);
     }
   }
 }
