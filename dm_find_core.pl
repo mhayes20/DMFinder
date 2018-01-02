@@ -163,37 +163,54 @@ sub parse_vcf_record_info {
   return %vcf_info_dictionary;
 }
 
+sub parse_vcf_line
+{
+  my $line = shift;
+  chomp($line);
+  my @temp_rec = split( /\t/, $line );
+  #Now get the other chromosome and position
+  my $vcf_info_line       = $temp_rec[7];
+  my %vcf_info_dictionary = parse_vcf_record_info($vcf_info_line);
+  my %edge;
+  $edge{"start_chr"} = $temp_rec[0];
+  $edge{"start_pos"} = int($temp_rec[1]);
+  $edge{"end_chr"}   = lc $vcf_info_dictionary{"CHR2"};
+  $edge{"end_pos"}   = int( $vcf_info_dictionary{"END"} );
+  my $chr2_loc = int( $vcf_info_dictionary{"END"} );
+  return %edge; 
+}
+
 sub add_edge_if_exist
 {
-  my $seg_record_ref     = shift;
+  my $amplicon_list_ref     = shift;
   my $other_chr          = shift;
   my $other_pos          = shift;
   my $i                  = shift;
   my $window             = shift;
-  my @seg_record = @$seg_record_ref;
-  for ( my $j = $i + 1 ; $j < scalar(@seg_record) ; $j++ ) {
-    my $temp_line = $seg_record[$j];
+  my @amplicon_list = @$amplicon_list_ref;
+  for ( my $j = $i + 1 ; $j < scalar(@amplicon_list) ; $j++ ) {
+    my $temp_line = $amplicon_list[$j];
     chomp($temp_line);
     my @temp_rec_other = split( /\t/, $temp_line );
     if ( $other_chr eq $temp_rec_other[0]
       && abs( $other_pos - $temp_rec_other[1] ) <= $window )
     {
-      $g->add_edge( $seg_record[$i], $seg_record[$j] );
-      $explored{ $seg_record[$i] } = 0;
-      $explored{ $seg_record[$j] } = 0;
-      my $edge = $seg_record[$i] . " " . $seg_record[$j];
+      $g->add_edge( $amplicon_list[$i], $amplicon_list[$j] );
+      $explored{ $amplicon_list[$i] } = 0;
+      $explored{ $amplicon_list[$j] } = 0;
+      my $edge = $amplicon_list[$i] . " " . $amplicon_list[$j];
       $explored_edges{ $edge } = 0;
-      $viz->add_edge_once( $seg_record[$i], $seg_record[$j] );
+      $viz->add_edge_once( $amplicon_list[$i], $amplicon_list[$j] );
       
     } elsif ( $other_chr eq $temp_rec_other[0]
            && abs( $other_pos - $temp_rec_other[2] ) <= $window )
     {
-      $g->add_edge( $seg_record[$i], $seg_record[$j] );
-      $explored{ $seg_record[$i] } = 0;
-      $explored{ $seg_record[$j] } = 0;
-      my $edge = $seg_record[$i] . " " . $seg_record[$j];
+      $g->add_edge( $amplicon_list[$i], $amplicon_list[$j] );
+      $explored{ $amplicon_list[$i] } = 0;
+      $explored{ $amplicon_list[$j] } = 0;
+      my $edge = $amplicon_list[$i] . " " . $amplicon_list[$j];
       $explored_edges{ $edge } = 0;
-      $viz->add_edge_once( $seg_record[$i], $seg_record[$j] );
+      $viz->add_edge_once( $amplicon_list[$i], $amplicon_list[$j] );
     }
   }
 }    
@@ -228,18 +245,9 @@ my $min_cyclic     = $ARGV[5];
 my $min_non_cyclic = $ARGV[6];
 my $report_file    = $ARGV[7];
 my $graph_file     = $ARGV[8];
-my $verbose      = $ARGV[9];
-my $other_chr      = "";
-my $other_pos      = 0;
-my $cn_chr         = "";
-my $cn_start       = "";
-my $cn_end         = "";
-my $sv_chr_i    = "";
-my $sv_chr_i_bp = "";
+my $verbose        = $ARGV[9];
 my $e           = "";
-my $sv_chr_j    = "";
-my $sv_chr_j_bp = "";
-my @seg_record = (); # will store all amplified segment records
+my @amplicon_list = (); # will store all amplified segment records
 my $startFlag =  0;  # 1 if graph constructor should look at start 
                      # of a CN segment, 0 otherwise.
 
@@ -251,49 +259,51 @@ my $seg_line = "";
 my @seg_rec  = ();
 while ( $line = <CN> ) {
   if ($line =~ /(\w+)\t(\w+)\t(\w+)/) {
-    push @seg_record, "$1\t$2\t$3";
+    push @amplicon_list, "$1\t$2\t$3";
   }
 }
 
 my $vcf_comment_line_pattern = "^#.*";
-for ( my $i = 0 ; $i < scalar(@seg_record) - 1 ; $i++ ) {
-  $seg_line = $seg_record[$i];
+for ( my $i = 0 ; $i < scalar(@amplicon_list) - 1 ; $i++ ) {
+  $seg_line = $amplicon_list[$i];
   if ( $seg_line =~ /$vcf_comment_line_pattern/ ) {
     next;
   }
   chomp($seg_line);
   @seg_rec = split( /\t/, $seg_line );
+  my %amplicon;
+  $amplicon{"chr"}   = $seg_rec[0];
+  $amplicon{"start"} = int($seg_rec[1]);
+  $amplicon{"end"}   = int($seg_rec[2]);
   for ( my $k = 0 ; $k < scalar(@SV) ; $k++ ) {
     #Search SV file
     $line = $SV[$k];
     if ( $line =~ /$vcf_comment_line_pattern/ ) {
       next;
     }
-    #print "$line\n";
-    chomp($line);
-    #print "link: $line\n";
-    @temp_rec = split( /\t/, $line );
-    #Now get the other chromosome and position
-    my $vcf_info_line       = $temp_rec[7];
-    my %vcf_info_dictionary = parse_vcf_record_info($vcf_info_line);
-    my $chr2     = lc $vcf_info_dictionary{"CHR2"};
-    my $chr2_loc = int( $vcf_info_dictionary{"END"} );
-    if ( $temp_rec[0] eq $seg_rec[0] &&
-           ( abs( int( $temp_rec[1] ) - int( $seg_rec[1] ) ) <= $window
-          || abs( int( $temp_rec[1] ) - int( $seg_rec[2] ) ) <= $window ) )
+    my %edge = parse_vcf_line($line);
+    if ( $edge{"start_chr"} eq $amplicon{"chr"} )
     {
-      add_edge_if_exist( \@seg_record, $chr2, $chr2_loc, $i, $window);
+      if ( abs( $edge{"start_pos"} - $amplicon{"start"} ) <= $window
+        || abs( $edge{"start_pos"} - $amplicon{"end"} )   <= $window )
+      {
+        add_edge_if_exist( \@amplicon_list, $edge{"end_chr"}, 
+                           $edge{"end_pos"}, $i, $window);
+      }
     }
-    elsif ( $chr2 eq $seg_rec[0] &&
-             ( abs( int( $chr2_loc ) - int( $seg_rec[1] ) ) <= $window 
-            || abs( int( $chr2_loc ) - int( $seg_rec[2] ) ) <= $window ) )
+    elsif ( $edge{"end_chr"} eq $amplicon{"chr"} )
     {
-      add_edge_if_exist( \@seg_record, $temp_rec[0], $temp_rec[1], $i, $window);
-    }
+      if ( abs( $edge{"end_pos"} - $amplicon{"start"} ) <= $window 
+        || abs( $edge{"end_pos"} - $amplicon{"end"} ) <= $window )
+      {
+        add_edge_if_exist( \@amplicon_list, $edge{"start_chr"}, 
+                           $edge{"start_pos"}, $i, $window);
+      }
+    } 
   }
 }
 my @V = $g->vertices;
-#print "seg_record: ".$V[0]."\n";
+#print "amplicon_list: ".$V[0]."\n";
 foreach my $e (@V) {
   dfs($e);
 }
