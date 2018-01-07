@@ -256,6 +256,17 @@ sub print_discarded_double_minute {
   print "The averave mapping coverages of the amplicons are:\n@average_cov\n\n";
 }
 
+sub create_graph_file
+{
+  my $graph_file = shift;
+  open( VIZ, ">$graph_file" )
+    or die("Could not create the graph file $graph_file\n");
+  if ( $viz->is_directed() ) {
+    #die("GRAPH IS DIRECTED");
+  }
+  print VIZ $viz->as_graphviz();
+  close VIZ;
+}
 
 if ( scalar(@ARGV) != 11 ) {
   die("Usage: perl program.pl [SV FILE] [CN SEGMENT FILE] [WINDOW SIZE] 
@@ -369,6 +380,10 @@ foreach my $e (@V) {
 }
 
 close CN;
+
+
+create_graph_file($graph_file);
+
 #print "The undirected graph is $g\n";
 #print "The directed graph is $h\n";
 my @adj = ();
@@ -467,15 +482,10 @@ foreach my $e (@scc)  #Cycle through all SCCs in the graph to find potential DMs
   my $ssize = scalar(@shortest_path);
   $h->delete_vertices(@shortest_path);
   @shortest_path = ();
-  open( VIZ, ">$graph_file" )
-    or die("Could not create the graph file $graph_file\n");
-  if ( $viz->is_directed() ) {
-    #die("GRAPH IS DIRECTED");
-  }
-  print VIZ $viz->as_graphviz();
-  close VIZ;
-B:
 }
+
+
+
 #Get connected subgraphs. These are amplicons connected by SV breakpoints that were not predicted in the first two steps.
 ##These are likely double minutes.
 #print "Looking for WCC...\n";
