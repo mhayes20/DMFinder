@@ -307,7 +307,7 @@ if ($split_amplicons) {
       {
         my( $index )= grep { $amplicon_list[$_] eq $amplicon } 0..$#amplicon_list;
         splice @amplicon_list, $index, 1;
-        push @amplicon_list, split_amplicon(\%amplicon, $edge{'start_pos'});
+        push @amplicon_list, split_amplicon(\%amplicon, $edge{'start_pos'}, $verbose);
       }
       elsif ( $edge{"end_chr"} eq $amplicon{"chr"}
           && $edge{"end_pos"} > $amplicon{"start"} + 3 * $window
