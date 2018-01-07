@@ -182,7 +182,7 @@ sub parse_vcf_line
   my $vcf_info_line       = $temp_rec[7];
   my %vcf_info_dictionary = parse_vcf_record_info($vcf_info_line);
   my %edge;
-  $edge{"start_chr"} = $temp_rec[0];
+  $edge{"start_chr"} = lc $temp_rec[0];
   $edge{"start_pos"} = int($temp_rec[1]);
   $edge{"end_chr"}   = lc $vcf_info_dictionary{"CHR2"};
   $edge{"end_pos"}   = int( $vcf_info_dictionary{"END"} );
@@ -224,6 +224,25 @@ sub add_edge_if_exist
   }
 }    
 
+sub split_amplicon {
+  my $amplicon_ref = shift;
+  my $mid_pos      = shift;
+  my $verbose      = shift;
+
+  if ($verbose) {
+    print join '', 
+      "splitting the amplicon ", 
+      $amplicon_ref->{"chr"}, ":", $amplicon_ref->{"start"}, 
+      "-", $amplicon_ref->{"end"},  "mid=$mid_pos\n";
+  }
+  my $amp1 = join "\t", $amplicon_ref->{"chr"}, $amplicon_ref->{"start"}, $mid_pos;
+  my $amp2 = join "\t", $amplicon_ref->{"chr"}, $mid_pos, $amplicon_ref->{"end"};
+  my @splitted_amplicons;
+  push @splitted_amplicons, $amp1;
+  push @splitted_amplicons, $amp2;
+  return @splitted_amplicons;
+}
+
 sub print_discarded_double_minute {
   my $shortest_path_ref = shift;
   my $average_cov_ref   = shift; 
@@ -232,40 +251,77 @@ sub print_discarded_double_minute {
   my @average_cov       = @$average_cov_ref;
   print "Following possible $dm_type double minute has been discarded due to ";
   print "high variance of average mapping coverage among the amplicons:\n";
-  print "@shortest_path\n";
+  my $shortest_path_str = join '->', @shortest_path;
+  print "$shortest_path_str\n";
   print "The averave mapping coverages of the amplicons are:\n@average_cov\n\n";
 }
 
-if ( scalar(@ARGV) != 10 ) {
+
+if ( scalar(@ARGV) != 11 ) {
   die("Usage: perl program.pl [SV FILE] [CN SEGMENT FILE] [WINDOW SIZE] 
                               [BAM FILE] [MINQUAL] [MIN CYCLIC] [MIN NON CYCLIC]
-                              [REPORT FILE] [GRAPH FILE] [VERBOSITY]\n");
+                              [REPORT FILE] [GRAPH FILE] [SPLIT AMPLICONS] [VERBOSITY]\n");
 }
 open( SV, "<" . $ARGV[0] )
   or die("Could not open structural variant breakpoint file!\n");
 my $line      = "";
 my $temp_line = "";
 my $path_to_cn_file = $ARGV[1];
-my $window          = $ARGV[2];
+my $window          = int($ARGV[2]);
 my $bam_file        = $ARGV[3];
 my $min_qual        = $ARGV[4];
 my $min_cyclic      = $ARGV[5];
 my $min_non_cyclic  = $ARGV[6];
 my $report_file     = $ARGV[7];
 my $graph_file      = $ARGV[8];
-my $verbose         = $ARGV[9];
-my $e           = "";
-my @amplicon_list = (); # will store all amplified segment records
-my $startFlag =  0;  # 1 if graph constructor should look at start 
-                     # of a CN segment, 0 otherwise.
+my $split_amplicons = $ARGV[9];
+my $verbose         = $ARGV[10];
+my $e               = "";
+my @amplicon_list   = (); # will store all amplified segment records
+my $startFlag       =  0; # 1 if graph constructor should look at start
+                          # of a CN segment, 0 otherwise.
 
 @amplicon_list = read_amplicon_list($path_to_cn_file);
 
 my @SV = ();
 
-@SV = <SV>;
-
 my $vcf_comment_line_pattern = "^#.*";
+@SV = <SV>;
+if ($split_amplicons) {
+  foreach my $vcf_line ( @SV ) {
+    if ( $vcf_line =~ /$vcf_comment_line_pattern/ ) {
+      next;
+    }
+    my %edge = parse_vcf_line($vcf_line);
+    foreach my $amplicon ( @amplicon_list ) {
+      my @seg_rec = split( /\t/, $amplicon );
+      my %amplicon;
+      $amplicon{"chr"}   = $seg_rec[0];
+      $amplicon{"start"} = int($seg_rec[1]);
+      $amplicon{"end"}   = int($seg_rec[2]);
+
+     if ( $edge{"start_chr"} eq $amplicon{"chr"} 
+         && $edge{"start_pos"} > $amplicon{"start"} + 3 * $window
+         && $edge{"start_pos"} < $amplicon{"end"}   - 3 * $window
+      ) 
+      {
+        my( $index )= grep { $amplicon_list[$_] eq $amplicon } 0..$#amplicon_list;
+        splice @amplicon_list, $index, 1;
+        push @amplicon_list, split_amplicon(\%amplicon, $edge{'start_pos'});
+      }
+      elsif ( $edge{"end_chr"} eq $amplicon{"chr"}
+          && $edge{"end_pos"} > $amplicon{"start"} + 3 * $window
+          && $edge{"end_pos"} < $amplicon{"end"}   - 3 * $window  
+      )
+      {
+        my( $index )= grep { $amplicon_list[$_] eq $amplicon } 0..$#amplicon_list;
+        splice @amplicon_list, $index, 1;
+        push @amplicon_list, split_amplicon(\%amplicon, $edge{'end_pos'}, $verbose);
+      }
+    }
+  }
+  print "Amplicons splitting finished.\n";
+}
 for ( my $i = 0 ; $i < scalar(@amplicon_list) - 1 ; $i++ ) {
   my $seg_line = $amplicon_list[$i];
   if ( $seg_line =~ /$vcf_comment_line_pattern/ ) {
@@ -304,6 +360,8 @@ for ( my $i = 0 ; $i < scalar(@amplicon_list) - 1 ; $i++ ) {
     } 
   }
 }
+
+
 my @V = $g->vertices;
 #print "amplicon_list: ".$V[0]."\n";
 foreach my $e (@V) {
@@ -433,14 +491,6 @@ foreach my $e (@wcc) {
     my $end   = $rec_i[2];
     system( "samtools depth -r $chr:$start-$end -Q $min_qual $bam_file > $tmp1" );
     system( "cat $tmp1 | awk 'BEGIN { prev_chr=\"\";prev_pos=0;} { if(\$1==prev_chr && prev_pos+1!=int(\$2)) {for(i=prev_pos+1;i<int(\$2);++i) {printf(\"%s\\t%d\\t0\\n\",\$1,i);}} print; prev_chr=\$1;prev_pos=int(\$2);}' > $tmp1_zeros" );
-    #print average("$tmp1_zeros", $i)."\n";
-#    if ( average( "$tmp1_zeros", $i ) >= $max_cov ) {
-#      $max_cov = average( "$tmp1_zeros", $i );
-#    }
-#    if ( average( "$tmp1_zeros", $i ) <= $min_cov ) {
-#      $min_cov = average( "$tmp1_zeros", $i );
-#    }
-#  }
     my $amplicon_average_cov = average( "$tmp1_zeros", $i );
     if ( $amplicon_average_cov >= $max_cov ) {
       $max_cov = $amplicon_average_cov;

@@ -114,6 +114,7 @@ my $sv_coordinate_file;
 my $cn_coordinate_file;
 my $graph_file  = "";
 my $report_file = "";
+my $split_amplicons = 0;
 my $verbose = 0;
 
 sub options {
@@ -144,6 +145,9 @@ OPTIONS\n
   --window INT          Maximum number of base pairs to define proximity 
                         between copy number breakpoint and structural variant 
                         breakpoint [2*(cutoff*stdev+mean)]
+  --split_amplicons     Allow splitting amplicons from copy number file if one
+                        of the ends of a structural variant edge falls in 
+                        between of the amplicon region.
   --verbose             Make the operation more talkative\n"
 
 }
@@ -152,19 +156,20 @@ if ( $? & 127 ) {
   die("ERROR: dm_find.pl: Samtools not found. Is it in your PATH variable?\n");
 }
 GetOptions(
-  'input_bam=s'      => \$input_bam_file,
-  'report_file=s'    => \$report_file,
-  'graph_file=s'     => \$graph_file,
-  'sv=s'             => \$sv_coordinate_file,
-  'cn=s'             => \$cn_coordinate_file,
-  'min_cyclic=i'     => \$min_cyclic,
-  'min_non_cyclic=i' => \$min_non_cyclic,
-  'cutoff=i'         => \$cutoff,
-  'mean=s'           => \$mean,
-  'stdev=s'          => \$stdev,
-  'minqual=i'        => \$minqual,
-  'window=i'         => \$window,
-  'verbose'          => \$verbose,
+  'input_bam=s'        => \$input_bam_file,
+  'report_file=s'      => \$report_file,
+  'graph_file=s'       => \$graph_file,
+  'sv=s'               => \$sv_coordinate_file,
+  'cn=s'               => \$cn_coordinate_file,
+  'min_cyclic=i'       => \$min_cyclic,
+  'min_non_cyclic=i'   => \$min_non_cyclic,
+  'cutoff=i'           => \$cutoff,
+  'mean=s'             => \$mean,
+  'stdev=s'            => \$stdev,
+  'minqual=i'          => \$minqual,
+  'window=i'           => \$window,
+  'split_amplicons'    => \$split_amplicons,
+  'verbose'            => \$verbose,
 ) or Usage("Invalid commmand line options.\n");
 if ( length $report_file == 0 ) {
   die("ERROR: dm_find.pl: REPORT_FILE not specified\n");
@@ -212,5 +217,6 @@ my $exec_command = join ' ',
         $min_non_cyclic,
         $report_file,
         $graph_file,
+        $split_amplicons,
         $verbose;
 system($exec_command)
