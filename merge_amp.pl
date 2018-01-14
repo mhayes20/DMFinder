@@ -7,7 +7,7 @@ use strict;
 use Scalar::Util qw(looks_like_number);
 
 if ( scalar(@ARGV) != 1 and scalar(@ARGV) != 2 ) {
-  die("Usage is perl program.pl [RDX SUM FILT FILE] [SV LINK FILE] [WINDOW]\n");
+  die("Usage is perl program.pl [RDX SUM FILT FILE] [OPTIONAL CHROMOSOME PREFIX]\n");
 }
 
 my $file       = $ARGV[0];
