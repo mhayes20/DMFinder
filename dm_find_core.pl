@@ -243,7 +243,7 @@ sub split_amplicon {
   return @splitted_amplicons;
 }
 
-sub print_discarded_double_minute {
+sub print_discarded_dm_cov_variance {
   my $shortest_path_ref = shift;
   my $average_cov_ref   = shift; 
   my $dm_type           = shift;
@@ -256,8 +256,17 @@ sub print_discarded_double_minute {
   print "The averave mapping coverages of the amplicons are:\n@average_cov\n\n";
 }
 
-sub create_graph_file
-{
+sub print_discarded_dm_length {
+  my $shortest_path_ref = shift;
+  my $dm_type           = shift;
+  my @shortest_path     = @$shortest_path_ref;
+  print "Following possible $dm_type double minute has been discarded due to ";
+  print "minimum length requirement\n";
+  my $shortest_path_str = join '->', @shortest_path;
+  print "$shortest_path_str\n";
+}
+
+sub create_graph_file {
   my $graph_file = shift;
   open( VIZ, ">$graph_file" )
     or die("Could not create the graph file $graph_file\n");
@@ -459,8 +468,11 @@ foreach my $e (@scc)  #Cycle through all SCCs in the graph to find potential DMs
     }
     push @average_cov, int($amplicon_average_cov);
   }
-  if ( $verbose && $max_cov - $min_cov >= 35) {
-    print_discarded_double_minute(\@shortest_path, \@average_cov, "complete");
+  if ( $verbose && scalar(@shortest_path) <= $min_cyclic ) {
+    print_discarded_dm_length(\@shortest_path, "complete");
+  }
+  elsif ( $verbose && (($max_cov - $min_cov) >= 35)) {
+    print_discarded_dm_cov_variance(\@shortest_path, \@average_cov, "complete");
   }
   if ( scalar(@shortest_path) > $min_cyclic  #Enforce minimum length requirement
     && ( $max_cov - $min_cov ) < 35
@@ -505,19 +517,21 @@ foreach my $e (@wcc) {
     if ( $amplicon_average_cov >= $max_cov ) {
       $max_cov = $amplicon_average_cov;
     }
-    if ( $amplicon_average_cov <= $min_cov ) {
+    elsif ( $amplicon_average_cov <= $min_cov ) {
       $min_cov = $amplicon_average_cov;
     }
     push @average_cov, int($amplicon_average_cov);
   }
-  if ( $verbose && $max_cov - $min_cov >= 35) {
-    print_discarded_double_minute(\@shortest_path, \@average_cov, 'incomplete');
+  if ( $verbose && scalar(@shortest_path) <= $min_non_cyclic ) {
+    print_discarded_dm_length(\@shortest_path, "incomplete");
   }
- 
+  elsif ( $verbose && (($max_cov - $min_cov) >= 35) ) {
+    print_discarded_dm_cov_variance(\@shortest_path, \@average_cov, 'incomplete');
+  }
 #print "SCC is @$e\n";
 #print "size of shortest_path: ".scalar(@shortest_path)."\n";
 #print "max_cov=$max_cov, min_cov=$min_cov\n";
-  if ( scalar(@shortest_path) >= $min_non_cyclic
+  if ( scalar(@shortest_path) > $min_non_cyclic
     && ( $max_cov - $min_cov ) < 35
     ) #Once again, this is to ensure we don't get a predicted dmin that has only one amplicon
   {
