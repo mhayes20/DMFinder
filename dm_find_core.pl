@@ -106,6 +106,35 @@ sub average {
   close F1;
   return $sum / $n;
 }
+sub caclulate_average_cov
+{
+  my $shortest_path_ref = shift;
+  my $bam_file          = shift;
+  my $min_qual          = shift;
+  my @shortest_path = @$shortest_path_ref;
+  my @average_cov = ();
+  for ( my $i = 0 ; $i < scalar(@shortest_path) ; $i++ ) {
+    chomp( $shortest_path[$i] );
+    my @rec_i = split( /\t/, $shortest_path[$i] );
+    my $chr   = $rec_i[0];
+    my $start = $rec_i[1];
+    my $end   = $rec_i[2];
+    system("samtools depth -r $chr:$start-$end -Q $min_qual $bam_file > $tmp1" );
+    system("cat $tmp1 | awk 'BEGIN { prev_chr=\"\";prev_pos=0;}           \
+                      { if(\$1==prev_chr && prev_pos+1!=int(\$2)){ \
+                           for(i=prev_pos+1;i<int(\$2);++i) {      \
+                             printf(\"%s\\t%d\\t0\\n\",\$1,i);     \
+                           }                                       \
+                        }                                          \
+                        print; prev_chr=\$1;prev_pos=int(\$2);}' > $tmp1_zeros"
+    );
+    #print average("$tmp1_zeros", $i)."\n";
+    my $amplicon_average_cov = average( "$tmp1_zeros", $i );
+    push @average_cov, int($amplicon_average_cov);
+  }
+  return @average_cov;
+} 
+
 
 sub dfs {
   my @adj = $g->neighbors( $_[0] );
@@ -277,7 +306,7 @@ sub create_graph_file {
   close VIZ;
 }
 
-if ( scalar(@ARGV) != 11 ) {
+if ( scalar(@ARGV) != 12 ) {
   die("Usage: perl program.pl [SV FILE] [CN SEGMENT FILE] [WINDOW SIZE] 
                               [BAM FILE] [MINQUAL] [MIN CYCLIC] [MIN NON CYCLIC]
                               [REPORT FILE] [GRAPH FILE] [SPLIT AMPLICONS] [VERBOSITY]\n");
@@ -295,7 +324,8 @@ my $min_non_cyclic  = $ARGV[6];
 my $report_file     = $ARGV[7];
 my $graph_file      = $ARGV[8];
 my $split_amplicons = $ARGV[9];
-my $verbose         = $ARGV[10];
+my $no_avg_cov_check= $ARGV[10];
+my $verbose         = $ARGV[11];
 my $e               = "";
 my @amplicon_list   = (); # will store all amplified segment records
 my $startFlag       =  0; # 1 if graph constructor should look at start
@@ -446,28 +476,14 @@ foreach my $e (@scc)  #Cycle through all SCCs in the graph to find potential DMs
   if (scalar(@shortest_path) == 0) {
     next;
   }
-  my @average_cov = ();
-  for ( my $i = 0 ; $i < scalar(@shortest_path) ; $i++ ) {
-    chomp( $shortest_path[$i] );
-    my @rec_i = split( /\t/, $shortest_path[$i] );
-    my $chr   = $rec_i[0];
-    my $start = $rec_i[1];
-    my $end   = $rec_i[2];
-    system(
-      "samtools depth -r $chr:$start-$end -Q $min_qual $bam_file > $tmp1" );
-    system(
-"cat $tmp1 | awk 'BEGIN { prev_chr=\"\";prev_pos=0;} { if(\$1==prev_chr && prev_pos+1!=int(\$2)) {for(i=prev_pos+1;i<int(\$2);++i) {printf(\"%s\\t%d\\t0\\n\",\$1,i);}} print; prev_chr=\$1;prev_pos=int(\$2);}' > $tmp1_zeros"
-    );
-    #print average("$tmp1_zeros", $i)."\n";
-    my $amplicon_average_cov = average( "$tmp1_zeros", $i );
-    if ( $amplicon_average_cov >= $max_cov ) {
-      $max_cov = $amplicon_average_cov;
-    }
-    if ( $amplicon_average_cov <= $min_cov ) {
-      $min_cov = $amplicon_average_cov;
-    }
-    push @average_cov, int($amplicon_average_cov);
+  my @average_cov = (0);
+  if (!$no_avg_cov_check) {
+    @average_cov = caclulate_average_cov(\@shortest_path, 
+                                          $bam_file, 
+                                          $min_qual);
   }
+  my $min_cov = min @average_cov;
+  my $max_cov = max @average_cov;;
   if ( $verbose && scalar(@shortest_path) <= $min_cyclic ) {
     print_discarded_dm_length(\@shortest_path, "complete");
   }
@@ -504,29 +520,19 @@ foreach my $e (@scc)  #Cycle through all SCCs in the graph to find potential DMs
 my @wcc = $h->weakly_connected_components();
 foreach my $e (@wcc) {
   my @shortest_path = @$e;
-  my @average_cov = ();
-  for ( my $i = 0 ; $i < scalar(@shortest_path) ; $i++ ) {
-    chomp( $shortest_path[$i] );
-    my @rec_i = split( /\t/, $shortest_path[$i] );
-    my $chr   = $rec_i[0];
-    my $start = $rec_i[1];
-    my $end   = $rec_i[2];
-    system( "samtools depth -r $chr:$start-$end -Q $min_qual $bam_file > $tmp1" );
-    system( "cat $tmp1 | awk 'BEGIN { prev_chr=\"\";prev_pos=0;} { if(\$1==prev_chr && prev_pos+1!=int(\$2)) {for(i=prev_pos+1;i<int(\$2);++i) {printf(\"%s\\t%d\\t0\\n\",\$1,i);}} print; prev_chr=\$1;prev_pos=int(\$2);}' > $tmp1_zeros" );
-    my $amplicon_average_cov = average( "$tmp1_zeros", $i );
-    if ( $amplicon_average_cov >= $max_cov ) {
-      $max_cov = $amplicon_average_cov;
-    }
-    elsif ( $amplicon_average_cov <= $min_cov ) {
-      $min_cov = $amplicon_average_cov;
-    }
-    push @average_cov, int($amplicon_average_cov);
+  my @average_cov = (0);
+  if (!$no_avg_cov_check) {
+    @average_cov = caclulate_average_cov(\@shortest_path, 
+                                                $bam_file, 
+                                                $min_qual);
   }
+  my $min_cov = min @average_cov;
+  my $max_cov = max @average_cov;;
   if ( $verbose && scalar(@shortest_path) <= $min_non_cyclic ) {
     print_discarded_dm_length(\@shortest_path, "incomplete");
   }
-  elsif ( $verbose && (($max_cov - $min_cov) >= 35) ) {
-    print_discarded_dm_cov_variance(\@shortest_path, \@average_cov, 'incomplete');
+  elsif( $verbose && (($max_cov - $min_cov) >= 35) ) {
+       print_discarded_dm_cov_variance(\@shortest_path, \@average_cov, 'incomplete');
   }
 #print "SCC is @$e\n";
 #print "size of shortest_path: ".scalar(@shortest_path)."\n";

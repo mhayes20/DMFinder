@@ -115,6 +115,7 @@ my $cn_coordinate_file;
 my $graph_file  = "";
 my $report_file = "";
 my $split_amplicons = 0;
+my $no_avg_cov_check = 0;
 my $verbose = 0;
 
 sub options {
@@ -148,6 +149,8 @@ OPTIONS\n
   --split_amplicons     Allow splitting amplicons from copy number file if one
                         of the ends of a structural variant edge falls in 
                         between of the amplicon region.
+  --no_avg_cov_check    Predict DMs regardless of average mapping coverage
+                        among its amplicons.
   --verbose             Make the operation more talkative\n"
 
 }
@@ -169,6 +172,7 @@ GetOptions(
   'minqual=i'          => \$minqual,
   'window=i'           => \$window,
   'split_amplicons'    => \$split_amplicons,
+  'no_avg_cov_check'   => \$no_avg_cov_check,
   'verbose'            => \$verbose,
 ) or Usage("Invalid commmand line options.\n");
 if ( length $report_file == 0 ) {
@@ -218,5 +222,6 @@ my $exec_command = join ' ',
         $report_file,
         $graph_file,
         $split_amplicons,
+        $no_avg_cov_check,
         $verbose;
 system($exec_command)
