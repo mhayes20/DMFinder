@@ -112,7 +112,7 @@ A:
   #}
 }
 
-print "$merge_count merge operations occurred\n";
+print STDERR  "$merge_count merge operations occurred\n";
 close IN;
 #close SV;
 1;
