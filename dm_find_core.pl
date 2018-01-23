@@ -211,9 +211,9 @@ sub parse_vcf_line
   my $vcf_info_line       = $temp_rec[7];
   my %vcf_info_dictionary = parse_vcf_record_info($vcf_info_line);
   my %edge;
-  $edge{"start_chr"} = lc $temp_rec[0];
+  $edge{"start_chr"} = $temp_rec[0];
   $edge{"start_pos"} = int($temp_rec[1]);
-  $edge{"end_chr"}   = lc $vcf_info_dictionary{"CHR2"};
+  $edge{"end_chr"}   = $vcf_info_dictionary{"CHR2"};
   $edge{"end_pos"}   = int( $vcf_info_dictionary{"END"} );
   return %edge; 
 }
@@ -239,7 +239,6 @@ sub add_edge_if_exist
       my $edge = $amplicon_list[$i] . " " . $amplicon_list[$j];
       $explored_edges{ $edge } = 0;
       $viz->add_edge_once( $amplicon_list[$i], $amplicon_list[$j] );
-      
     } elsif ( $other_chr eq $temp_rec_other[0]
            && abs( $other_pos - $temp_rec_other[2] ) <= $window )
     {
