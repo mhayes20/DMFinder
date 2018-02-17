@@ -117,6 +117,8 @@ my $report_file = "";
 my $split_amplicons = 0;
 my $no_avg_cov_check = 0;
 my $verbose = 0;
+my $help = 0;
+
 
 sub options {
   print "\nDM Finder v1.0";
@@ -174,13 +176,21 @@ GetOptions(
   'split_amplicons'    => \$split_amplicons,
   'no_avg_cov_check'   => \$no_avg_cov_check,
   'verbose'            => \$verbose,
+  'help'               => \$help,
 ) or Usage("Invalid commmand line options.\n");
+
+if ($help != 0) {
+  options();
+  exit(0);
+}
+
 if ( length $report_file == 0 ) {
   die("ERROR: dm_find.pl: REPORT_FILE not specified\n");
 }
 if ( length $graph_file == 0 ) {
   die("ERROR: dm_find.pl: GRAPH_FILE not specified\n");
 }
+
 if ( $window == 0 ) {
   $window = 2 * ( $cutoff * $stdev + $mean );
 }
