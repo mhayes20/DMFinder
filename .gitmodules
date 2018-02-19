@@ -1,0 +1,3 @@
+[submodule "tools/amplicon-finder"]
+	path = tools/amplicon-finder
+	url = https://github.com/rmarduga/amplicon-finder.git
